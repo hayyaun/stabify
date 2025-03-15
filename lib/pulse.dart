@@ -7,12 +7,16 @@ const accelS9y = 16384.0; // 2g
 const gyroS9y = 131.0; // 250deg/s
 
 class Pulse {
-  Pulse? _previous;
+  Pulse? _previous, _calib;
   Vec3 _a, _g;
 
-  Pulse(this._previous, this._a, this._g);
+  Pulse({required Vec3 a, required Vec3 g, Pulse? previous, Pulse? calib})
+    : _a = a,
+      _g = g,
+      _previous = previous,
+      _calib = calib;
 
-  factory Pulse.fromString(String input, Pulse? previous) {
+  factory Pulse.fromString(String input, Pulse? previous, Pulse? calib) {
     var lines = input.split('\n');
     var a = Vec3(0, 0, 0);
     var g = Vec3(0, 0, 0);
@@ -44,11 +48,14 @@ class Pulse {
     } catch (err) {
       print('$a $g $err');
     }
-    return Pulse(previous, a, g);
+    return Pulse(a: a, g: g, previous: previous, calib: calib);
   }
 
   Vec3 get a => _a / accelS9y;
   Vec3 get g => _g / gyroS9y;
+
+  Vec3 get aRaw => _a;
+  Vec3 get gRaw => _g;
 
   double get accelPitch =>
       atan2(-a.x, sqrt(pow(a.y, 2) + pow(a.z, 2))) * 180 / pi;
@@ -58,10 +65,15 @@ class Pulse {
   double get gyroPitch => (_previous?.pitch ?? 0) + (g.y * 1);
   double get gyroRoll => (_previous?.roll ?? 0) + (g.x * 1);
 
-  double get pitch => alpha * gyroPitch + (1 - alpha) * accelPitch;
-  double get roll => alpha * gyroRoll + (1 - alpha) * accelRoll;
+  double get pitch =>
+      alpha * gyroPitch + (1 - alpha) * accelPitch - (_calib?.pitch ?? 0);
+  double get roll =>
+      alpha * gyroRoll + (1 - alpha) * accelRoll - (_calib?.roll ?? 0);
 
   double get angle => max(pitch.abs(), roll.abs());
+
+  set a(Vec3 a) => _a = a;
+  set g(Vec3 g) => _g = g;
 
   @override
   String toString() =>

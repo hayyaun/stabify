@@ -36,6 +36,9 @@ class Vec3 {
     return mag == 0 ? Vec3(0, 0, 0) : this / mag;
   }
 
+  factory Vec3.zero() => Vec3(0, 0, 0);
+
   @override
-  String toString() => 'Vec3($x, $y, $z)';
+  String toString() =>
+      'Vec3(${x.toStringAsFixed(3)}, ${y.toStringAsFixed(3)}, ${z.toStringAsFixed(3)})';
 }

@@ -2,11 +2,11 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:semistab/pulse.dart';
 import 'package:semistab/utils.dart';
+import 'package:semistab/vec3.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,6 +44,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 const maxThreshold = 40;
+const calibLerpFactor = 0.5;
 
 class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
@@ -55,6 +56,9 @@ class _MyHomePageState extends State<MyHomePage> {
   BluetoothConnection? connection;
   String _buffer = '';
   final List<Pulse> _pulses = [];
+  final Pulse _calib = Pulse(a: Vec3.zero(), g: Vec3.zero());
+
+  int _calibCountDown = 0;
 
   @override
   void initState() {
@@ -70,11 +74,39 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
+  //  Calibration
+
+  void beginCalibrate() {
+    _calibCountDown = 10;
+  }
+
+  void calibLerp(Pulse pulse) {
+    if (_calibCountDown == 0) return;
+    if (_calibCountDown == 10) {
+      _calib.a = pulse.aRaw;
+      _calib.g = pulse.gRaw;
+    } else {
+      final a = calibLerpFactor;
+      _calib.a = (_calib.aRaw * a) + pulse.aRaw * (1 - a);
+      _calib.g = (_calib.gRaw * a) + pulse.gRaw * (1 - a);
+    }
+    _calibCountDown -= 1;
+    setState(() {});
+  }
+
+  // Reference
+
+  void resetReference() {}
+
+  // Alert
+
   void checkAlert(Pulse pulse) async {
     if (pulse.angle < threshold) return;
     print('Alert!!!!');
     await player.play(AssetSource('alert.mp3'));
   }
+
+  // Device
 
   void scanDevices() async {
     try {
@@ -147,6 +179,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  // Main Pulse Parser
+
   void parseOutputToPulses() {
     var boxes = _buffer.split('ax:');
     // ignore last one - maybe it's not complete yet
@@ -162,9 +196,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       if (corrupt) continue; // incomplete, let it append later on
       var previous = _pulses.isEmpty ? null : _pulses.first;
-      var pulse = Pulse.fromString(box, previous);
+      var pulse = Pulse.fromString(box, previous, _calib);
       _pulses.add(pulse); // add pulse
       checkAlert(pulse); // play alert
+      calibLerp(pulse); // calibrate
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       setState(() {});
     }
@@ -273,8 +308,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: headingStyle,
               ),
               if (_device?.isConnected ?? false) ...[
-                FilledButton(onPressed: () {}, child: Text('Calibrate Device')),
-                FilledButton(onPressed: () {}, child: Text('Reset Reference')),
+                FilledButton(
+                  onPressed: beginCalibrate,
+                  child: Text(
+                    'Calibrate Device${_calibCountDown == 0 ? '' : ' (${_calibCountDown}s)'}',
+                  ),
+                ),
+                FilledButton(
+                  onPressed: resetReference,
+                  child: Text('Reset Reference'),
+                ),
               ],
               const SizedBox(height: 20),
               Text(
@@ -289,6 +332,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
               ),
               const SizedBox(height: 20),
+              Text('Calib: $_calib ${_calib.a} ${_calib.g}'),
+              Text(
+                'Last: ${_pulses.lastOrNull} ${_pulses.lastOrNull?.a} ${_pulses.lastOrNull?.g}',
+              ),
               const Text('Angle:', style: headingStyle),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
