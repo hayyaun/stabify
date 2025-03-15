@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:semistab/pulse.dart';
+import 'package:semistab/utils.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
+
+const headingStyle = TextStyle(fontWeight: FontWeight.bold);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -18,11 +21,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'VirtStab',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      darkTheme: ThemeData(colorScheme: ColorScheme.dark(primary: Colors.blue)),
+      themeMode: ThemeMode.dark,
+      home: const MyHomePage(title: 'VirtStab'),
     );
   }
 }
@@ -36,17 +41,21 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+const maxThreshold = 40;
+
 class _MyHomePageState extends State<MyHomePage> {
-  BluetoothDevice? hc05;
+  BluetoothDevice? _device;
   BluetoothConnection? connection;
   List<Pulse> pulses = [];
   String _message = 'Message';
   String _buffer = '';
 
+  double thresholdFactor = 0.5;
+
   @override
   void dispose() async {
     print("Widget Removed"); // Runs when the widget is destroyed
-    await disconnectHC05();
+    await disconnectDevice();
     super.dispose();
   }
 
@@ -92,14 +101,14 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> disconnectHC05() async {
+  Future<void> disconnectDevice() async {
     // Close connection
     connection?.finish();
     connection?.dispose();
     print("Disconnected.");
   }
 
-  void connectToHC05() async {
+  void connectToDevice() async {
     try {
       await requestBluetoothPermissions();
 
@@ -111,29 +120,28 @@ class _MyHomePageState extends State<MyHomePage> {
       // Find HC-05
       for (var device in devices) {
         if (device.name == "HC-05") {
-          hc05 = device;
+          _device = device;
           break;
         }
       }
 
-      if (hc05 == null) {
+      if (_device == null) {
         print("HC-05 not found. Make sure it's paired.");
         return;
       }
 
       if (connection != null) {
-        await disconnectHC05();
+        await disconnectDevice();
         print("Remove previous connection to HC-05");
       }
 
       // Connect to HC-05
-      connection = await BluetoothConnection.toAddress(hc05!.address);
+      connection = await BluetoothConnection.toAddress(_device!.address);
       print("Connected to HC-05");
 
       // Listen for incoming data
       connection!.input?.listen((Uint8List data) {
         var output = String.fromCharCodes(data);
-        print("Received: ${output}");
         _buffer += output;
         parsePulses();
       });
@@ -152,25 +160,73 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        backgroundColor: Colors.transparent,
+        title: Text(
+          widget.title,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2.0,
+          ),
+        ),
       ),
-      body: Center(
+      body: Padding(
+        padding: EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('Devices:'),
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Devices:', style: headingStyle),
+            const SizedBox(height: 12),
+            Text(_message, style: Theme.of(context).textTheme.bodySmall),
+            // TODO
+            const SizedBox(height: 32),
+            Text('Connected: ${_device?.name}', style: headingStyle),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: () {}, child: Text('Calibrate Device')),
+            FilledButton(onPressed: () {}, child: Text('Reset Position')),
+            const SizedBox(height: 32),
             Text(
-              pulses.isNotEmpty ? pulses.last.toString() : '',
-              style: Theme.of(context).textTheme.bodyMedium,
+              'Threshold: ${(thresholdFactor * maxThreshold).toStringAsFixed(0)}°',
+              style: headingStyle,
+            ),
+            const SizedBox(height: 12),
+            Slider(
+              value: thresholdFactor,
+              onChanged: (v) {
+                thresholdFactor = v;
+                setState(() {});
+              },
+            ),
+            const SizedBox(height: 32),
+            const Text('Angle: ${12}°', style: headingStyle),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${pulses.lastOrNull?.pitch.round() ?? 0}°',
+                  style: TextStyle(color: Colors.amber, fontSize: 68),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(bottom: 14, left: 4),
+                  child: Text(
+                    '~ ${calcPressureOnNeck(pulses.lastOrNull?.pitch ?? 0).round()} Kg',
+                    style: TextStyle(color: Colors.orange, fontSize: 24),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(bottom: 16, left: 8),
+                  child: Text('weight on your neck!', style: TextStyle()),
+                ),
+              ],
             ),
             Text(_buffer, style: Theme.of(context).textTheme.bodyMedium),
-            Text(_message, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: connectToHC05,
+        onPressed: connectToDevice,
         tooltip: 'Scan',
         child: const Icon(Icons.add),
       ),

@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:semistab/vec3.dart';
 
-const alpha = 0.9;
+const alpha = 0.01;
 const accelS9y = 16384.0; // 2g
 const gyroS9y = 131.0; // 250deg/s
 
@@ -55,5 +55,6 @@ class Pulse {
   double get roll => alpha * gyroRoll + (1 - alpha) * accelRoll;
 
   @override
-  String toString() => 'Pulse(accel: $a, gyro: $g, pitch: $pitch, roll: $roll)';
+  String toString() =>
+      'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';
 }
