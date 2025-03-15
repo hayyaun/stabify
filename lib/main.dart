@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -49,14 +50,20 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Pulse> pulses = [];
   String _message = 'Message';
   String _buffer = '';
-
   double thresholdFactor = 0.5;
+  final player = AudioPlayer();
 
   @override
   void dispose() async {
     print("Widget Removed"); // Runs when the widget is destroyed
     await disconnectDevice();
     super.dispose();
+  }
+
+  void checkAlert(Pulse pulse) async {
+    if (pulse.angle < threshold) return;
+    print('Alert!!!!');
+    await player.play(AssetSource('alert.mp3'));
   }
 
   void parseOutputToPulses() {
@@ -74,7 +81,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       if (corrupt) continue; // incomplete, let it append later on
       var previous = pulses.isEmpty ? null : pulses.first;
-      pulses.add(Pulse.fromString(box, previous)); // add pulse
+      var pulse = Pulse.fromString(box, previous);
+      pulses.add(pulse); // add pulse
+      checkAlert(pulse); // play alert
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       setState(() {});
     }
