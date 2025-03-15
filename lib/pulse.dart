@@ -20,18 +20,25 @@ class Pulse {
       for (var line in lines) {
         var ln = line.replaceAll(' ', '');
         if (ln.isEmpty) continue;
-        if (ln.contains('ax:')) {
-          a.x = double.parse(ln.replaceAll('ax:', ''));
-        } else if (ln.contains('ay:')) {
-          a.y = double.parse(ln.replaceAll('ay:', ''));
-        } else if (ln.contains('az:')) {
-          a.z = double.parse(ln.replaceAll('az:', ''));
-        } else if (ln.contains('gx:')) {
-          g.x = double.parse(ln.replaceAll('gx:', ''));
-        } else if (ln.contains('gy:')) {
-          g.y = double.parse(ln.replaceAll('gy:', ''));
-        } else if (ln.contains('gz:')) {
-          g.z = double.parse(ln.replaceAll('gz:', ''));
+
+        if (ln.contains('ax')) {
+          a.x =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('ax', '')) ?? 0;
+        } else if (ln.contains('ay')) {
+          a.y =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('ay', '')) ?? 0;
+        } else if (ln.contains('az')) {
+          a.z =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('az', '')) ?? 0;
+        } else if (ln.contains('gx')) {
+          g.x =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('gx', '')) ?? 0;
+        } else if (ln.contains('gy')) {
+          g.y =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('gy', '')) ?? 0;
+        } else if (ln.contains('gz')) {
+          g.z =
+              double.tryParse(ln.replaceAll(':', '').replaceAll('gz', '')) ?? 0;
         }
       }
     } catch (err) {
