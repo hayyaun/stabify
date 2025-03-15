@@ -54,6 +54,8 @@ class Pulse {
   double get pitch => alpha * gyroPitch + (1 - alpha) * accelPitch;
   double get roll => alpha * gyroRoll + (1 - alpha) * accelRoll;
 
+  double get angle => max(pitch.abs(), roll.abs());
+
   @override
   String toString() =>
       'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';

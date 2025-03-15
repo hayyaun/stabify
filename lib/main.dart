@@ -59,10 +59,12 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void parsePulses() {
-    var boxes = _buffer.split('\n\n');
-    for (var box in boxes) {
+  void parseOutputToPulses() {
+    var boxes = _buffer.split('ax:');
+    // ignore last one - maybe it's not complete yet
+    for (int i = 0; i < boxes.length - 2; i++) {
       // validate integrity of box
+      var box = 'ax:${boxes[i]}';
       var corrupt = false;
       for (var k in keys) {
         if (!box.contains(k)) {
@@ -143,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
       connection!.input?.listen((Uint8List data) {
         var output = String.fromCharCodes(data);
         _buffer += output;
-        parsePulses();
+        parseOutputToPulses();
       });
 
       // Send data
@@ -155,6 +157,8 @@ class _MyHomePageState extends State<MyHomePage> {
       print(err);
     }
   }
+
+  get threshold => thresholdFactor * maxThreshold;
 
   @override
   Widget build(BuildContext context) {
@@ -170,59 +174,83 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Devices:', style: headingStyle),
-            const SizedBox(height: 12),
-            Text(_message, style: Theme.of(context).textTheme.bodySmall),
-            // TODO
-            const SizedBox(height: 32),
-            Text('Connected: ${_device?.name}', style: headingStyle),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: () {}, child: Text('Calibrate Device')),
-            FilledButton(onPressed: () {}, child: Text('Reset Position')),
-            const SizedBox(height: 32),
-            Text(
-              'Threshold: ${(thresholdFactor * maxThreshold).toStringAsFixed(0)}°',
-              style: headingStyle,
-            ),
-            const SizedBox(height: 12),
-            Slider(
-              value: thresholdFactor,
-              onChanged: (v) {
-                thresholdFactor = v;
-                setState(() {});
-              },
-            ),
-            const SizedBox(height: 32),
-            const Text('Angle: ${12}°', style: headingStyle),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${pulses.lastOrNull?.pitch.round() ?? 0}°',
-                  style: TextStyle(color: Colors.amber, fontSize: 68),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 14, left: 4),
-                  child: Text(
-                    '~ ${calcPressureOnNeck(pulses.lastOrNull?.pitch ?? 0).round()} Kg',
-                    style: TextStyle(color: Colors.orange, fontSize: 24),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Devices:', style: headingStyle),
+              const SizedBox(height: 12),
+              Text(_message, style: Theme.of(context).textTheme.bodySmall),
+              // TODO
+              const SizedBox(height: 32),
+              Text('Connected: ${_device?.name}', style: headingStyle),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: () {}, child: Text('Calibrate Device')),
+              FilledButton(onPressed: () {}, child: Text('Reset Reference')),
+              FilledButton(
+                onPressed: disconnectDevice,
+                child: Text('Disconnect'),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Threshold: ${(threshold).toStringAsFixed(0)}°',
+                style: headingStyle,
+              ),
+              const SizedBox(height: 12),
+              Slider(
+                value: thresholdFactor,
+                onChanged: (v) {
+                  thresholdFactor = v;
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 32),
+              const Text('Angle:', style: headingStyle),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${pulses.lastOrNull?.angle.round() ?? 0}°',
+                    style: TextStyle(
+                      color: getColorByAngle(
+                        pulses.lastOrNull?.angle ?? 0,
+                        threshold,
+                      ).withAlpha(120),
+                      fontSize: 68,
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 16, left: 8),
-                  child: Text('weight on your neck!', style: TextStyle()),
-                ),
-              ],
-            ),
-            Text(_buffer, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 14, left: 4),
+                    child: Text(
+                      '~ ${calcPressureOnNeck(pulses.lastOrNull?.angle ?? 0).round()} Kg',
+                      style: TextStyle(
+                        color: getColorByAngle(
+                          pulses.lastOrNull?.angle ?? 0,
+                          threshold,
+                        ),
+                        fontSize: 24,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 16, left: 8),
+                    child: Text('weight on your neck!', style: TextStyle()),
+                  ),
+                ],
+              ),
+              // SizedBox(
+              //   height: 500, // Set the height you want
+              //   child: Text(
+              //     _buffer,
+              //     style: Theme.of(context).textTheme.bodyMedium,
+              //   ),
+              // ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
