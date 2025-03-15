@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:semistab/vec3.dart';
+import 'package:semistab/pulse.dart';
 
 void main() {
   runApp(const MyApp());
@@ -37,48 +37,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  BluetoothDevice? hc05;
   BluetoothConnection? connection;
+  List<Pulse> pulses = [];
   String _message = 'Message';
-  String _output = '';
-  List<Vec3> aList = [];
-  List<Vec3> gList = [];
+  String _buffer = '';
 
   @override
-  void dispose() {
+  void dispose() async {
     print("Widget Removed"); // Runs when the widget is destroyed
-    disconnectHC05();
+    await disconnectHC05();
     super.dispose();
   }
 
-  void appendVectors(String input) {
-    var lines = input.split('\n');
-    var a = Vec3(0, 0, 0);
-    var g = Vec3(0, 0, 0);
-    for (var line in lines) {
-      var lineTrim = line.replaceAll(' ', '');
-      if (lineTrim.isEmpty) continue;
-      if (lineTrim.contains('ax:')) {
-        a.x = double.parse(lineTrim.replaceAll('ax:', ''));
-      } else if (lineTrim.contains('ay:')) {
-        a.y = double.parse(lineTrim.replaceAll('ay:', ''));
-      } else if (lineTrim.contains('az:')) {
-        a.z = double.parse(lineTrim.replaceAll('az:', ''));
-      } else if (lineTrim.contains('gx:')) {
-        g.x = double.parse(lineTrim.replaceAll('gx:', ''));
-      } else if (lineTrim.contains('gy:')) {
-        g.y = double.parse(lineTrim.replaceAll('gy:', ''));
-      } else if (lineTrim.contains('gz:')) {
-        g.z = double.parse(lineTrim.replaceAll('gz:', ''));
-      }
-    }
-    aList.add(a);
-    gList.add(g);
-    setState(() {});
-  }
-
-  void toVec() {
-    var boxes = _output.split('\n\n');
+  void parsePulses() {
+    var boxes = _buffer.split('\n\n');
     for (var box in boxes) {
+      // validate integrity of box
       var corrupt = false;
       for (var k in keys) {
         if (!box.contains(k)) {
@@ -86,8 +61,11 @@ class _MyHomePageState extends State<MyHomePage> {
           break;
         }
       }
-      if (corrupt) continue;
-      appendVectors(box);
+      if (corrupt) continue; // incomplete, let it append later on
+      var previous = pulses.isEmpty ? null : pulses.first;
+      pulses.add(Pulse.fromString(box, previous)); // add pulse
+      _buffer = _buffer.replaceFirst(box, ''); // remove used box
+      setState(() {});
     }
   }
 
@@ -114,10 +92,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void disconnectHC05() async {
+  Future<void> disconnectHC05() async {
     // Close connection
-    await Future.delayed(Duration(seconds: 25));
     connection?.finish();
+    connection?.dispose();
     print("Disconnected.");
   }
 
@@ -131,7 +109,6 @@ class _MyHomePageState extends State<MyHomePage> {
           await FlutterBluetoothSerial.instance.getBondedDevices();
 
       // Find HC-05
-      BluetoothDevice? hc05;
       for (var device in devices) {
         if (device.name == "HC-05") {
           hc05 = device;
@@ -144,16 +121,21 @@ class _MyHomePageState extends State<MyHomePage> {
         return;
       }
 
+      if (connection != null) {
+        await disconnectHC05();
+        print("Remove previous connection to HC-05");
+      }
+
       // Connect to HC-05
-      connection = await BluetoothConnection.toAddress(hc05.address);
+      connection = await BluetoothConnection.toAddress(hc05!.address);
       print("Connected to HC-05");
 
       // Listen for incoming data
       connection!.input?.listen((Uint8List data) {
         var output = String.fromCharCodes(data);
         print("Received: ${output}");
-        _output += output;
-        toVec();
+        _buffer += output;
+        parsePulses();
       });
 
       // Send data
@@ -179,9 +161,10 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             const Text('Devices:'),
             Text(
-              gList.isNotEmpty ? gList.last.toString() : '',
+              pulses.isNotEmpty ? pulses.last.toString() : '',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            Text(_buffer, style: Theme.of(context).textTheme.bodyMedium),
             Text(_message, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
