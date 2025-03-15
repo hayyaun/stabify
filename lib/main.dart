@@ -139,7 +139,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // TODO reset calib
     setState(() {});
     // Close connection
-    connection?.finish();
+    await connection?.finish();
     connection?.dispose();
     print("Disconnected.");
   }
@@ -152,11 +152,11 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       _device = device;
-      setState(() {});
 
       // Connect to HC-05
       connection = await BluetoothConnection.toAddress(device.address);
       print("Connected to HC-05");
+      setState(() {});
 
       // Listen for incoming data
       connection!.input?.listen((Uint8List data) {
@@ -169,8 +169,6 @@ class _MyHomePageState extends State<MyHomePage> {
       connection!.output.add(Uint8List.fromList("A".codeUnits));
       await connection!.output.allSent;
       print("Data sent!");
-
-      setState(() {});
     } catch (err) {
       print('Cannot connect, err occured');
       print(err);
@@ -230,6 +228,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final connected = connection?.isConnected ?? false;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -258,7 +257,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   spacing: 6,
                   children:
                       _devices.map((d) {
-                        final active = d.address == _device?.address;
+                        final active =
+                            d.address == _device?.address && connected;
                         return FilledButton(
                           onPressed: () {
                             if (active) {
@@ -300,12 +300,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               const SizedBox(height: 20),
               Text(
-                _device?.isConnected ?? false
-                    ? 'Connected: ${_device!.name}'
-                    : 'Disconnected!',
+                connected ? 'Connected: ${_device?.name}' : 'Disconnected!',
                 style: headingStyle,
               ),
-              if (_device?.isConnected ?? false) ...[
+              if (connected) ...[
                 FilledButton(
                   onPressed: beginCalibrate,
                   child: Text(
