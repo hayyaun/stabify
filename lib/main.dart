@@ -325,7 +325,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {});
                 },
               ),
-              Text('Calib: $_calib'),
               const SizedBox(height: 20),
               const Text('Angle:', style: headingStyle),
               Row(

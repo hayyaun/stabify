@@ -153,10 +153,11 @@ packages:
   flutter_bluetooth_serial:
     dependency: "direct main"
     description:
-      name: flutter_bluetooth_serial
-      sha256: "85ae82c4099b2b1facdc54e75e1bcfa88dc7f719e55dc886bb0b648cb16636b1"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: de30f3f00c7168db55eec40008d2bb002f92113b
+      url: "https://github.com/Sameetdmr/flutter_bluetooth_serial.git"
+    source: git
     version: "0.4.0"
   flutter_lints:
     dependency: "direct dev"
