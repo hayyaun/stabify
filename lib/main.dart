@@ -45,6 +45,7 @@ class MyHomePage extends StatefulWidget {
 
 const maxThreshold = 40;
 const calibLerpFactor = 0.5;
+const setRefCount = 3;
 
 class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
@@ -56,8 +57,8 @@ class _MyHomePageState extends State<MyHomePage> {
   BluetoothConnection? connection;
   String _buffer = '';
   final List<Pulse> _pulses = [];
-  final Pulse _calib = Pulse(a: Vec3.zero(), g: Vec3.zero());
-
+  // calib
+  final _calib = Pulse(a: Vec3.zero(), g: Vec3.zero());
   int _calibCountDown = 0;
 
   @override
@@ -77,26 +78,22 @@ class _MyHomePageState extends State<MyHomePage> {
   //  Calibration
 
   void beginCalibrate() {
-    _calibCountDown = 10;
+    _calibCountDown = setRefCount;
   }
 
   void calibLerp(Pulse pulse) {
     if (_calibCountDown == 0) return;
-    if (_calibCountDown == 10) {
-      _calib.a = pulse.aRaw;
-      _calib.g = pulse.gRaw;
+    if (_calibCountDown == setRefCount) {
+      _calib.a = pulse.a;
+      _calib.g = pulse.g;
     } else {
       final a = calibLerpFactor;
-      _calib.a = (_calib.aRaw * a) + pulse.aRaw * (1 - a);
-      _calib.g = (_calib.gRaw * a) + pulse.gRaw * (1 - a);
+      _calib.a = (_calib.a * a) + pulse.a * (1 - a);
+      _calib.g = (_calib.g * a) + pulse.g * (1 - a);
     }
     _calibCountDown -= 1;
     setState(() {});
   }
-
-  // Reference
-
-  void resetReference() {}
 
   // Alert
 
@@ -139,6 +136,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _device = null;
     _pulses.clear();
     _buffer = '';
+    // TODO reset calib
     setState(() {});
     // Close connection
     connection?.finish();
@@ -311,12 +309,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 FilledButton(
                   onPressed: beginCalibrate,
                   child: Text(
-                    'Calibrate Device${_calibCountDown == 0 ? '' : ' (${_calibCountDown}s)'}',
+                    'Set Reference${_calibCountDown == 0 ? '' : ' (${_calibCountDown}s)'}',
                   ),
-                ),
-                FilledButton(
-                  onPressed: resetReference,
-                  child: Text('Reset Reference'),
                 ),
               ],
               const SizedBox(height: 20),
@@ -331,11 +325,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {});
                 },
               ),
+              Text('Calib: $_calib'),
               const SizedBox(height: 20),
-              Text('Calib: $_calib ${_calib.a} ${_calib.g}'),
-              Text(
-                'Last: ${_pulses.lastOrNull} ${_pulses.lastOrNull?.a} ${_pulses.lastOrNull?.g}',
-              ),
               const Text('Angle:', style: headingStyle),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
