@@ -31,9 +31,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'VirtStab',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
       ),
-      darkTheme: ThemeData(colorScheme: ColorScheme.dark(primary: Colors.blue)),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.dark(primary: Colors.limeAccent.shade200),
+      ),
       themeMode: ThemeMode.dark,
       home: const MyHomePage(title: 'VirtStab'),
       debugShowCheckedModeBanner: false,
@@ -237,6 +239,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget buildTitle() {
+    final color = Theme.of(context).colorScheme.onSurface;
     return Text.rich(
       textAlign: TextAlign.center,
       TextSpan(
@@ -244,23 +247,19 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           TextSpan(
             text: '.: ',
-            style: TextStyle(
-              color: Colors.white.withAlpha(50),
-            ), // Semi-transparent
+            style: TextStyle(color: color.withAlpha(50)), // Semi-transparent
           ),
           TextSpan(
             text: 'VIRT',
-            style: TextStyle(color: Colors.white.withAlpha(80)), // Blue text
+            style: TextStyle(color: color.withAlpha(80)), // Blue text
           ),
           TextSpan(
             text: 'STAB',
-            style: TextStyle(color: Colors.white.withAlpha(180)), // Blue text
+            style: TextStyle(color: color.withAlpha(180)), // Blue text
           ),
           TextSpan(
             text: ' :.',
-            style: TextStyle(
-              color: Colors.white.withAlpha(50),
-            ), // Semi-transparent
+            style: TextStyle(color: color.withAlpha(50)), // Semi-transparent
           ),
         ],
       ),
@@ -269,6 +268,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
       bottomNavigationBar: BottomAppBar(
         child: Row(
@@ -277,7 +277,9 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             IconButton(
               icon: Icon(
-                muted ? Icons.notifications_off : Icons.notifications,
+                muted
+                    ? Icons.notifications_off_rounded
+                    : Icons.notifications_rounded,
                 size: 22,
               ),
               color: muted ? Colors.orangeAccent.shade100 : null,
@@ -295,14 +297,14 @@ class _MyHomePageState extends State<MyHomePage> {
                   Colors.white.withAlpha(15),
                 ),
               ),
-              color: Colors.blueAccent.shade100,
+              color: _calibCountDown > 0 ? primary : null,
               icon: Icon(Icons.adjust, size: 22),
               onPressed: beginCalibrate,
             ),
             IconButton(
-              icon: Icon(Icons.search, size: 22),
+              icon: Icon(Icons.bluetooth_rounded, size: 22),
               onPressed: scanAndConnect,
-              color: scanning ? Colors.blueAccent.shade100 : null,
+              color: scanning ? primary : null,
             ),
           ],
         ),
@@ -320,7 +322,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 SafeArea(top: true, child: buildTitle()),
                 const SizedBox(height: 12),
                 Transform.translate(
-                  offset: Offset(0, -250),
+                  offset: Offset(0, -200),
                   child: Gauge(
                     angle: _pulses.lastOrNull?.angle ?? 0,
                     threshold: threshold,
@@ -340,8 +342,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   max: maxThreshold,
                   value: threshold,
                   padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
-                  thumbColor: Colors.blueAccent.shade100,
-                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  thumbColor: primary,
+                  activeColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withAlpha(80),
                   divisions: 5,
                   onChanged: (v) {
                     threshold = v;
@@ -362,8 +366,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   max: 10,
                   value: alertDelay.toDouble(),
                   padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
-                  thumbColor: Colors.blueAccent.shade100,
-                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  thumbColor: primary,
+                  activeColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withAlpha(80),
                   divisions: 10,
                   onChanged: (v) {
                     alertDelay = v.toInt();
@@ -380,7 +386,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
                       : 'Set Reference (${_calibCountDown}s)',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.blueAccent.shade100),
+                  style: TextStyle(color: primary),
                 ),
                 const SizedBox(height: 20),
               ],

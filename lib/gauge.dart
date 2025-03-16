@@ -20,8 +20,8 @@ class _GaugeState extends State<Gauge> {
     final mid = widget.threshold / 2;
     final stop = widget.threshold + mid;
     return SizedBox(
-      width: 500,
-      height: 500,
+      width: 350,
+      height: 350,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -71,11 +71,11 @@ class _GaugeState extends State<Gauge> {
                     angle: 90,
                     positionFactor: 0.25,
                     widget: Padding(
-                      padding: EdgeInsets.only(left: 52),
+                      padding: EdgeInsets.only(left: 42),
                       child: Text(
                         '${widget.angle.toStringAsFixed(0)}°',
                         style: TextStyle(
-                          fontSize: 168,
+                          fontSize: 142,
                           fontWeight: FontWeight.w100,
                           color: color?.shade100,
                         ),
