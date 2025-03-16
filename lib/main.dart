@@ -229,6 +229,37 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Widget buildTitle() {
+    return Text.rich(
+      textAlign: TextAlign.center,
+      TextSpan(
+        style: TextStyle(fontSize: 24, letterSpacing: 8),
+        children: [
+          TextSpan(
+            text: '.: ',
+            style: TextStyle(
+              color: Colors.white.withAlpha(50),
+            ), // Semi-transparent
+          ),
+          TextSpan(
+            text: 'VIRT',
+            style: TextStyle(color: Colors.white.withAlpha(80)), // Blue text
+          ),
+          TextSpan(
+            text: 'STAB',
+            style: TextStyle(color: Colors.white.withAlpha(180)), // Blue text
+          ),
+          TextSpan(
+            text: ' :.',
+            style: TextStyle(
+              color: Colors.white.withAlpha(50),
+            ), // Semi-transparent
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -278,15 +309,7 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '.: ${widget.title.toUpperCase()} :.',
-                style: TextStyle(
-                  letterSpacing: 8,
-                  fontSize: 24,
-                  color: Colors.white.withAlpha(85),
-                ),
-                textAlign: TextAlign.center,
-              ),
+              buildTitle(),
               const SizedBox(height: 12),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),

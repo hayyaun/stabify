@@ -53,28 +53,32 @@ class _GaugeState extends State<Gauge> {
           ],
           annotations: <GaugeAnnotation>[
             GaugeAnnotation(
+              angle: 90,
+              positionFactor: 0.05,
+              widget: Padding(
+                padding: EdgeInsets.only(left: 28),
+                child: Text(
+                  '${widget.angle.toStringAsFixed(0)}°',
+                  style: TextStyle(
+                    fontSize: 92,
+                    fontWeight: FontWeight.w100,
+                    color: color?.shade100,
+                  ),
+                ),
+              ),
+            ),
+            GaugeAnnotation(
+              angle: 90,
+              positionFactor: 1.7,
               widget: Column(
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Text(
-                      '${widget.angle.toStringAsFixed(0)}°',
-                      style: TextStyle(
-                        fontSize: 72,
-                        fontWeight: FontWeight.w100,
-                        color: color,
-                      ),
-                    ),
-                  ),
                   Text(
                     '${calcPressureOnNeck(widget.angle).toStringAsFixed(1)} Kg',
-                    style: TextStyle(fontSize: 24, color: color),
+                    style: TextStyle(fontSize: 22, color: color),
                   ),
                   Text('extra weight on neck!', style: TextStyle(fontSize: 10)),
                 ],
               ),
-              angle: 90,
-              positionFactor: 0.8,
             ),
           ],
         ),
