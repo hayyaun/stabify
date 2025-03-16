@@ -18,7 +18,7 @@ const maxThreshold = 60.0;
 const defaultThreshold = 15.0;
 const calibLerpFactor = 0.33;
 const setRefCount = 3;
-const alertRange = 4; // seconds avg
+const defaultAlertDelay = 4; // seconds avg
 
 const headingStyle = TextStyle(fontWeight: FontWeight.bold);
 
@@ -36,6 +36,7 @@ class MyApp extends StatelessWidget {
       darkTheme: ThemeData(colorScheme: ColorScheme.dark(primary: Colors.blue)),
       themeMode: ThemeMode.dark,
       home: const MyHomePage(title: 'VirtStab'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -51,6 +52,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   double threshold = defaultThreshold;
+  int alertDelay = defaultAlertDelay;
   String _message = '';
   // device
   final List<BluetoothDevice> _devices = [];
@@ -108,13 +110,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void checkAngleAlert() async {
     if (muted) return;
-    if (_pulses.length < alertRange) return;
-    final start = _pulses.length - alertRange;
+    if (_pulses.length < alertDelay) return;
+    final start = _pulses.length - alertDelay;
     final total = _pulses
         .sublist(start)
         .map((p) => p.angle)
         .reduce((a1, a2) => a1 + a2);
-    final avgAngle = total / alertRange;
+    final avgAngle = total / alertDelay;
     if (avgAngle < threshold) return;
     await player.play(AssetSource('alert.mp3'));
   }
@@ -152,6 +154,11 @@ class _MyHomePageState extends State<MyHomePage> {
           _devices.add(device);
           setState(() {});
         }
+      }
+
+      if (_devices.isEmpty) {
+        _message = 'Device not found!';
+        setState(() {});
       }
     } catch (err) {
       if (kDebugMode) print('>> scan: $err');
@@ -263,7 +270,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -301,56 +307,85 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            spacing: 12,
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              buildTitle(),
-              const SizedBox(height: 12),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Gauge(
-                  angle: _pulses.lastOrNull?.angle ?? 0,
-                  threshold: threshold,
+      body: SafeArea(
+        top: true,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              spacing: 12,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 12),
+                buildTitle(),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Gauge(
+                    angle: _pulses.lastOrNull?.angle ?? 0,
+                    threshold: threshold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 0),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Threshold: ${(threshold).toStringAsFixed(0)}°',
-                  style: headingStyle,
+                const SizedBox(height: 0),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Threshold: ${(threshold).toStringAsFixed(0)}°',
+                    style: headingStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Slider(
+                  min: minThreshold,
+                  max: maxThreshold,
+                  value: threshold,
+                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  thumbColor: Colors.blueAccent.shade100,
+                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  divisions: 5,
+                  onChanged: (v) {
+                    threshold = v;
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Alert Delay: ${alertDelay}s',
+                    style: headingStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Slider(
+                  min: 1,
+                  max: 10,
+                  value: alertDelay.toDouble(),
+                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  thumbColor: Colors.blueAccent.shade100,
+                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  divisions: 10,
+                  onChanged: (v) {
+                    alertDelay = v.toInt();
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _message.isEmpty ? 'Everything is fine!' : _message,
                   textAlign: TextAlign.center,
                 ),
-              ),
-              Slider(
-                min: minThreshold,
-                max: maxThreshold,
-                value: threshold,
-                padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
-                thumbColor: Colors.blueAccent.shade100,
-                activeColor: Colors.blueAccent.shade100.withAlpha(80),
-                divisions: 5,
-                onChanged: (v) {
-                  threshold = v;
-                  setState(() {});
-                },
-              ),
-              const SizedBox(height: 8),
-              if (_message.isNotEmpty)
-                Text(_message, textAlign: TextAlign.center),
-              if (_calibCountDown > 0)
                 Text(
-                  'Set Reference (${_calibCountDown}s)',
+                  _calibCountDown == 0
+                      ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
+                      : 'Set Reference (${_calibCountDown}s)',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.blueAccent.shade100),
                 ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
