@@ -1,9 +1,10 @@
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:semistab/blue.dart';
 import 'package:semistab/pulse.dart';
 import 'package:semistab/utils.dart';
 import 'package:semistab/vec3.dart';
@@ -13,6 +14,10 @@ void main() {
 }
 
 const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
+const maxThreshold = 40;
+const calibLerpFactor = 0.33;
+const setRefCount = 3;
+const alertRange = 4; // seconds avg
 
 const headingStyle = TextStyle(fontWeight: FontWeight.bold);
 
@@ -43,10 +48,6 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-const maxThreshold = 40;
-const calibLerpFactor = 0.5;
-const setRefCount = 3;
-
 class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
   final List<BluetoothDevice> _devices = [];
@@ -65,12 +66,14 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     // look for bluetooth devices
     scanDevices();
+    if (_devices.isNotEmpty) {
+      connectToDevice(_devices[0]);
+    }
     super.initState();
   }
 
   @override
   void dispose() async {
-    print("Widget Removed"); // Runs when the widget is destroyed
     await disconnectDevice();
     super.dispose();
   }
@@ -81,15 +84,17 @@ class _MyHomePageState extends State<MyHomePage> {
     _calibCountDown = setRefCount;
   }
 
-  void calibLerp(Pulse pulse) {
+  void calibLerp() {
+    final pulse = _pulses.lastOrNull;
+    if (pulse == null) return;
     if (_calibCountDown == 0) return;
     if (_calibCountDown == setRefCount) {
       _calib.a = pulse.a;
       _calib.g = pulse.g;
     } else {
       final a = calibLerpFactor;
-      _calib.a = (_calib.a * a) + pulse.a * (1 - a);
-      _calib.g = (_calib.g * a) + pulse.g * (1 - a);
+      _calib.a = _calib.a * (1 - a) + pulse.a * a;
+      _calib.g = _calib.g * (1 - a) + pulse.g * a;
     }
     _calibCountDown -= 1;
     setState(() {});
@@ -97,9 +102,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Alert
 
-  void checkAlert(Pulse pulse) async {
-    if (pulse.angle < threshold) return;
-    print('Alert!!!!');
+  void checkAngleAlert() async {
+    if (_pulses.length < alertRange) return;
+    final start = _pulses.length - alertRange;
+    final total = _pulses
+        .sublist(start)
+        .map((p) => p.angle)
+        .reduce((a1, a2) => a1 + a2);
+    final avgAngle = total / alertRange;
+    if (avgAngle < threshold) return;
     await player.play(AssetSource('alert.mp3'));
   }
 
@@ -107,28 +118,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void scanDevices() async {
     try {
-      await requestBluetoothPermissions();
+      // Skip permission request on Linux
+      if (Platform.isAndroid || Platform.isIOS) {
+        await requestBluetoothPermissions();
+      }
 
       // reset previous list
       _devices.clear();
 
-      // GPT EXAM
       // Get a list of paired devices
-      List<BluetoothDevice> devices =
-          await FlutterBluetoothSerial.instance.getBondedDevices();
+      final devices = await FlutterBluetoothSerial.instance.getBondedDevices();
 
       // Find HC-05
-      for (var device in devices) {
+      for (final device in devices) {
         if (device.name == "HC-05") {
           _devices.add(device);
           setState(() {});
         }
       }
-
-      if (_devices.isNotEmpty) {
-        connectToDevice(_devices[0]);
-      }
-    } catch (_) {}
+    } catch (err) {
+      if (kDebugMode) print('>> scan: $err');
+      _message = "Can't scan bluetooth devices!";
+      setState(() {});
+    }
   }
 
   Future<void> disconnectDevice() async {
@@ -141,26 +153,30 @@ class _MyHomePageState extends State<MyHomePage> {
     // Close connection
     await connection?.finish();
     connection?.dispose();
-    print("Disconnected.");
+    if (kDebugMode) print(">> Disconnected.");
+    _message = 'Disconnected!';
+    setState(() {});
   }
 
   void connectToDevice(BluetoothDevice device) async {
     try {
       if (connection != null) {
         await disconnectDevice();
-        print("Remove previous connection to HC-05");
+        if (kDebugMode) print(">> Removing previous connection");
       }
 
+      // Set active device
       _device = device;
+      setState(() {});
 
       // Connect to HC-05
       connection = await BluetoothConnection.toAddress(device.address);
-      print("Connected to HC-05");
+      _message = "Connected to device";
       setState(() {});
 
       // Listen for incoming data
       connection!.input?.listen((Uint8List data) {
-        var output = String.fromCharCodes(data);
+        final output = String.fromCharCodes(data);
         _buffer += output;
         parseOutputToPulses();
       });
@@ -168,59 +184,31 @@ class _MyHomePageState extends State<MyHomePage> {
       // Send data
       connection!.output.add(Uint8List.fromList("A".codeUnits));
       await connection!.output.allSent;
-      print("Data sent!");
+      if (kDebugMode) print(">> Ack sent!");
     } catch (err) {
-      print('Cannot connect, err occured');
-      print(err);
+      if (kDebugMode) print('>> connect: $err');
+      _message = 'Cannot connect, something went wrong!';
+      setState(() {});
     }
   }
 
   // Main Pulse Parser
 
   void parseOutputToPulses() {
-    var boxes = _buffer.split('ax:');
+    final boxes = _buffer.split('ax:');
     // ignore last one - maybe it's not complete yet
     for (int i = 0; i < boxes.length - 2; i++) {
       // validate integrity of box
-      var box = 'ax:${boxes[i]}';
-      var corrupt = false;
-      for (var k in keys) {
-        if (!box.contains(k)) {
-          corrupt = true;
-          break;
-        }
-      }
+      final box = 'ax:${boxes[i]}';
+      final corrupt = keys.any((k) => !box.contains(k));
       if (corrupt) continue; // incomplete, let it append later on
-      var previous = _pulses.isEmpty ? null : _pulses.first;
-      var pulse = Pulse.fromString(box, previous, _calib);
+      final previous = _pulses.isEmpty ? null : _pulses.first;
+      final pulse = Pulse.fromString(box, previous, _calib);
       _pulses.add(pulse); // add pulse
-      checkAlert(pulse); // play alert
-      calibLerp(pulse); // calibrate
+      checkAngleAlert(); // play alert
+      calibLerp(); // calibrate
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       setState(() {});
-    }
-  }
-
-  Future<void> requestBluetoothPermissions() async {
-    Map<Permission, PermissionStatus> statuses =
-        await [
-          Permission.bluetooth,
-          Permission.bluetoothScan,
-          Permission.bluetoothConnect,
-          Permission.location,
-        ].request();
-
-    // Check if permissions were granted
-    if (statuses[Permission.bluetooth]!.isGranted &&
-        statuses[Permission.bluetoothScan]!.isGranted &&
-        statuses[Permission.bluetoothConnect]!.isGranted) {
-      setState(() {
-        _message = "All Bluetooth permissions granted!";
-      });
-    } else {
-      setState(() {
-        _message = "Bluetooth permissions denied!";
-      });
     }
   }
 
@@ -271,7 +259,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             backgroundColor: WidgetStatePropertyAll(
                               active ? Colors.greenAccent : Colors.blueAccent,
                             ),
-                            shape: MaterialStateProperty.all(
+                            shape: WidgetStateProperty.all(
                               RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                   8,

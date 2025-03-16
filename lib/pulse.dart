@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:semistab/vec3.dart';
 
 const alpha = 0.01;
@@ -15,36 +16,33 @@ class Pulse {
       _delta = delta;
 
   factory Pulse.fromString(String input, Pulse? previous, Pulse? delta) {
-    var lines = input.split('\n');
-    var a = Vec3(0, 0, 0);
-    var g = Vec3(0, 0, 0);
-    try {
-      for (var line in lines) {
-        var ln = line.replaceAll(' ', '');
-        if (ln.isEmpty) continue;
+    final lines = input.split('\n');
+    final a = Vec3(0, 0, 0);
+    final g = Vec3(0, 0, 0);
+    final mappings = {
+      'ax': (double value) => a.x = value,
+      'ay': (double value) => a.y = value,
+      'az': (double value) => a.z = value,
+      'gx': (double value) => g.x = value,
+      'gy': (double value) => g.y = value,
+      'gz': (double value) => g.z = value,
+    };
 
-        if (ln.contains('ax')) {
-          a.x =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('ax', '')) ?? 0;
-        } else if (ln.contains('ay')) {
-          a.y =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('ay', '')) ?? 0;
-        } else if (ln.contains('az')) {
-          a.z =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('az', '')) ?? 0;
-        } else if (ln.contains('gx')) {
-          g.x =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('gx', '')) ?? 0;
-        } else if (ln.contains('gy')) {
-          g.y =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('gy', '')) ?? 0;
-        } else if (ln.contains('gz')) {
-          g.z =
-              double.tryParse(ln.replaceAll(':', '').replaceAll('gz', '')) ?? 0;
+    try {
+      for (final line in lines) {
+        final ln = line.replaceAll(' ', '');
+        if (ln.isEmpty) continue;
+        for (final entry in mappings.entries) {
+          if (ln.contains(entry.key)) {
+            final numPart = ln.replaceAll(entry.key, '').replaceAll(':', '');
+            final value = double.tryParse(numPart) ?? 0;
+            entry.value(value);
+            break;
+          }
         }
       }
     } catch (err) {
-      print('$a $g $err');
+      if (kDebugMode) print('>> pulse fromString: $a $g $err');
     }
     return Pulse(a: a, g: g, previous: previous, delta: delta);
   }
@@ -68,7 +66,9 @@ class Pulse {
   double get angle => max(pitch.abs(), roll.abs());
 
   Pulse operator +(Pulse other) => Pulse(a: a + other.a, g: a + other.g);
+  Pulse operator -(Pulse other) => Pulse(a: a - other.a, g: a - other.g);
   Pulse operator *(double n) => Pulse(a: a * n, g: a * n);
+  Pulse operator /(double n) => Pulse(a: a / n, g: a / n);
 
   @override
   String toString() =>
