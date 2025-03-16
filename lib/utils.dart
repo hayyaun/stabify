@@ -8,7 +8,7 @@ double calcPressureOnNeck(double theta) =>
     headWeightKg * (1 - cos(theta.abs() * pi / 180));
 
 MaterialAccentColor? getColorByAngle(double angle, double threshold) {
-  if (angle > threshold) return Colors.redAccent;
-  if (angle > threshold / 2) return Colors.orangeAccent;
+  if (angle > threshold) return Colors.pinkAccent;
+  if (angle > threshold / 2) return Colors.limeAccent;
   return null;
 }
