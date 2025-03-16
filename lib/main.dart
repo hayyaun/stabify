@@ -7,6 +7,7 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:semistab/blue.dart';
 import 'package:semistab/gauge.dart';
 import 'package:semistab/pulse.dart';
+import 'package:semistab/utils.dart';
 
 void main() {
   runApp(const MyApp());
@@ -53,6 +54,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final ScrollController _scrollController = ScrollController();
+  // config
   double threshold = defaultThreshold;
   int alertDelay = defaultAlertDelay;
   String _message = '';
@@ -83,6 +86,14 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() async {
     await disconnectDevice();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   //  Calibration
@@ -238,8 +249,10 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Color get onSurface => Theme.of(context).colorScheme.onSurface;
+  Color get primary => Theme.of(context).colorScheme.primary;
+
   Widget buildTitle() {
-    final color = Theme.of(context).colorScheme.onSurface;
     return Text.rich(
       textAlign: TextAlign.center,
       TextSpan(
@@ -247,19 +260,23 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           TextSpan(
             text: '.: ',
-            style: TextStyle(color: color.withAlpha(50)), // Semi-transparent
+            style: TextStyle(
+              color: onSurface.withAlpha(50),
+            ), // Semi-transparent
           ),
           TextSpan(
             text: 'VIRT',
-            style: TextStyle(color: color.withAlpha(80)), // Blue text
+            style: TextStyle(color: onSurface.withAlpha(80)), // Blue text
           ),
           TextSpan(
             text: 'STAB',
-            style: TextStyle(color: color.withAlpha(180)), // Blue text
+            style: TextStyle(color: onSurface.withAlpha(180)), // Blue text
           ),
           TextSpan(
             text: ' :.',
-            style: TextStyle(color: color.withAlpha(50)), // Semi-transparent
+            style: TextStyle(
+              color: onSurface.withAlpha(50),
+            ), // Semi-transparent
           ),
         ],
       ),
@@ -268,7 +285,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
       bottomNavigationBar: BottomAppBar(
         child: Row(
@@ -311,6 +327,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: SizedBox(
         child: SingleChildScrollView(
+          controller: _scrollController,
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Column(
@@ -328,7 +345,52 @@ class _MyHomePageState extends State<MyHomePage> {
                     threshold: threshold,
                   ),
                 ),
+
+                // Messages
                 const SizedBox(height: 20),
+                Text(
+                  _message.isEmpty ? 'Everything is fine!' : _message,
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  _calibCountDown == 0
+                      ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
+                      : 'Set Reference (${_calibCountDown}s)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: primary),
+                ),
+
+                // Scroll Down
+                const SizedBox(height: 32),
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  child: IconButton(
+                    onPressed: _scrollToBottom,
+                    padding: EdgeInsets.zero,
+                    style: ButtonStyle(
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            12,
+                          ), // Adjust radius here
+                        ),
+                      ),
+                      backgroundColor: WidgetStatePropertyAll(
+                        primary.withAlpha(10),
+                      ),
+                    ),
+                    icon: Transform.rotate(
+                      angle: -90.0.toRadian(),
+                      child: Icon(Icons.chevron_left),
+                    ),
+                    color: primary,
+                  ),
+                ),
+
+                // Sliders
+                const SizedBox(height: 48),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
@@ -352,6 +414,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     setState(() {});
                   },
                 ),
+
                 const SizedBox(height: 8),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
@@ -376,18 +439,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     setState(() {});
                   },
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _message.isEmpty ? 'Everything is fine!' : _message,
-                  textAlign: TextAlign.center,
-                ),
-                Text(
-                  _calibCountDown == 0
-                      ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
-                      : 'Set Reference (${_calibCountDown}s)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: primary),
-                ),
+
                 const SizedBox(height: 20),
               ],
             ),
