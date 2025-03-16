@@ -33,7 +33,7 @@ class _GaugeState extends State<Gauge> {
               value: widget.angle,
               enableAnimation: true,
               color: Colors.white,
-              markerOffset: 40,
+              markerOffset: 32,
             ),
           ],
           ranges: <GaugeRange>[
@@ -56,11 +56,11 @@ class _GaugeState extends State<Gauge> {
               widget: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(left: 24),
+                    padding: EdgeInsets.only(left: 12),
                     child: Text(
-                      '${widget.angle.toStringAsFixed(1)}°',
+                      '${widget.angle.toStringAsFixed(0)}°',
                       style: TextStyle(
-                        fontSize: 86,
+                        fontSize: 72,
                         fontWeight: FontWeight.w100,
                         color: color,
                       ),
@@ -74,7 +74,7 @@ class _GaugeState extends State<Gauge> {
                 ],
               ),
               angle: 90,
-              positionFactor: 0.7,
+              positionFactor: 0.8,
             ),
           ],
         ),

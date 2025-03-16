@@ -50,18 +50,24 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final player = AudioPlayer();
-  final List<BluetoothDevice> _devices = [];
   double threshold = defaultThreshold;
   String _message = '';
   // device
+  final List<BluetoothDevice> _devices = [];
   BluetoothDevice? _device;
   BluetoothConnection? connection;
+  bool scanning = false;
+  // data
   String _buffer = '';
   final List<Pulse> _pulses = [];
   // calibrate
   final _calib = Pulse.zero();
   int _calibCountDown = 0;
+  // audio
+  final player = AudioPlayer();
+  bool muted = false;
+
+  get connected => _device != null && (connection?.isConnected ?? false);
 
   @override
   void initState() {
@@ -78,6 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
   //  Calibration
 
   void beginCalibrate() {
+    if (!connected) return;
     _calibCountDown = setRefCount;
   }
 
@@ -97,9 +104,10 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
-  // Alert
+  // Audio Alert
 
   void checkAngleAlert() async {
+    if (muted) return;
     if (_pulses.length < alertRange) return;
     final start = _pulses.length - alertRange;
     final total = _pulses
@@ -114,11 +122,15 @@ class _MyHomePageState extends State<MyHomePage> {
   // Device
 
   Future<void> scanAndConnect() async {
+    scanning = true;
+    setState(() {});
     // look for bluetooth devices
     await scanDevices();
     if (_devices.isNotEmpty) {
       await connectToDevice(_devices[0]);
     }
+    scanning = false;
+    setState(() {});
   }
 
   Future<void> scanDevices() async {
@@ -217,54 +229,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  get connected => connection?.isConnected ?? false;
-
-  Widget buildDevices(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        spacing: 6,
-        children:
-            _devices.map((d) {
-              final active = d.address == _device?.address && connected;
-              return FilledButton(
-                onPressed: () async {
-                  if (active) {
-                    await disconnectDevice();
-                  } else {
-                    await connectToDevice(d);
-                  }
-                },
-                style: ButtonStyle(
-                  backgroundColor: WidgetStatePropertyAll(
-                    active ? Colors.greenAccent : Colors.blueAccent,
-                  ),
-                  shape: WidgetStateProperty.all(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        8,
-                      ), // Adjust roundness
-                    ),
-                  ),
-                  padding: WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      d.name ?? 'Device',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(d.address, style: TextStyle(fontSize: 8)),
-                  ],
-                ),
-              );
-            }).toList(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -275,8 +239,15 @@ class _MyHomePageState extends State<MyHomePage> {
           spacing: 32,
           children: [
             IconButton(
-              icon: Icon(Icons.notifications, size: 22),
-              onPressed: () {},
+              icon: Icon(
+                muted ? Icons.notifications_off : Icons.notifications,
+                size: 22,
+              ),
+              color: muted ? Colors.orangeAccent.shade100 : null,
+              onPressed: () {
+                muted = !muted;
+                setState(() {});
+              },
             ),
             IconButton(
               style: ButtonStyle(
@@ -294,6 +265,7 @@ class _MyHomePageState extends State<MyHomePage> {
             IconButton(
               icon: Icon(Icons.search, size: 22),
               onPressed: scanAndConnect,
+              color: scanning ? Colors.blueAccent.shade100 : null,
             ),
           ],
         ),
@@ -316,15 +288,21 @@ class _MyHomePageState extends State<MyHomePage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              Gauge(
-                angle: _pulses.lastOrNull?.angle ?? 0,
-                threshold: threshold,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Gauge(
+                  angle: _pulses.lastOrNull?.angle ?? 0,
+                  threshold: threshold,
+                ),
               ),
               const SizedBox(height: 0),
-              Text(
-                'Threshold: ${(threshold).toStringAsFixed(0)}°',
-                style: headingStyle,
-                textAlign: TextAlign.center,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Threshold: ${(threshold).toStringAsFixed(0)}°',
+                  style: headingStyle,
+                  textAlign: TextAlign.center,
+                ),
               ),
               Slider(
                 min: minThreshold,
@@ -349,10 +327,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   style: TextStyle(color: Colors.blueAccent.shade100),
                 ),
               const SizedBox(height: 20),
-              // const Text('Devices:', style: headingStyle),
-              // Text(_message, style: Theme.of(context).textTheme.bodySmall),
-              // buildDevices(context),
-              // SizedBox(height: 54),
             ],
           ),
         ),
