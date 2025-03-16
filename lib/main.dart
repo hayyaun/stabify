@@ -307,82 +307,84 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            spacing: 12,
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 12),
-              SafeArea(top: true, child: buildTitle()),
-              const SizedBox(height: 12),
-              Padding(
-                padding: EdgeInsets.only(top: 40, bottom: 12),
-                child: Gauge(
-                  angle: _pulses.lastOrNull?.angle ?? 0,
-                  threshold: threshold,
+      body: SizedBox(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              spacing: 12,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 12),
+                SafeArea(top: true, child: buildTitle()),
+                const SizedBox(height: 12),
+                Transform.translate(
+                  offset: Offset(0, -250),
+                  child: Gauge(
+                    angle: _pulses.lastOrNull?.angle ?? 0,
+                    threshold: threshold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Threshold: ${(threshold).toStringAsFixed(0)}°',
-                  style: headingStyle,
+                const SizedBox(height: 20),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Threshold: ${(threshold).toStringAsFixed(0)}°',
+                    style: headingStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Slider(
+                  min: minThreshold,
+                  max: maxThreshold,
+                  value: threshold,
+                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  thumbColor: Colors.blueAccent.shade100,
+                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  divisions: 5,
+                  onChanged: (v) {
+                    threshold = v;
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Alert Delay: ${alertDelay}s',
+                    style: headingStyle,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Slider(
+                  min: 1,
+                  max: 10,
+                  value: alertDelay.toDouble(),
+                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  thumbColor: Colors.blueAccent.shade100,
+                  activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                  divisions: 10,
+                  onChanged: (v) {
+                    alertDelay = v.toInt();
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _message.isEmpty ? 'Everything is fine!' : _message,
                   textAlign: TextAlign.center,
                 ),
-              ),
-              Slider(
-                min: minThreshold,
-                max: maxThreshold,
-                value: threshold,
-                padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
-                thumbColor: Colors.blueAccent.shade100,
-                activeColor: Colors.blueAccent.shade100.withAlpha(80),
-                divisions: 5,
-                onChanged: (v) {
-                  threshold = v;
-                  setState(() {});
-                },
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Alert Delay: ${alertDelay}s',
-                  style: headingStyle,
+                Text(
+                  _calibCountDown == 0
+                      ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
+                      : 'Set Reference (${_calibCountDown}s)',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.blueAccent.shade100),
                 ),
-              ),
-              Slider(
-                min: 1,
-                max: 10,
-                value: alertDelay.toDouble(),
-                padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
-                thumbColor: Colors.blueAccent.shade100,
-                activeColor: Colors.blueAccent.shade100.withAlpha(80),
-                divisions: 10,
-                onChanged: (v) {
-                  alertDelay = v.toInt();
-                  setState(() {});
-                },
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _message.isEmpty ? 'Everything is fine!' : _message,
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                _calibCountDown == 0
-                    ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
-                    : 'Set Reference (${_calibCountDown}s)',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.blueAccent.shade100),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
