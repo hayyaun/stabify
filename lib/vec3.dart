@@ -38,6 +38,10 @@ class Vec3 {
 
   factory Vec3.zero() => Vec3(0, 0, 0);
 
+  void reset() {
+    x = y = z = 0;
+  }
+
   @override
   String toString() =>
       'Vec3(${x.toStringAsFixed(3)}, ${y.toStringAsFixed(3)}, ${z.toStringAsFixed(3)})';

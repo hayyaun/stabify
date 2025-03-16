@@ -15,6 +15,10 @@ class Pulse {
     : _previous = previous,
       _delta = delta;
 
+  factory Pulse.zero() {
+    return Pulse(a: Vec3.zero(), g: Vec3.zero());
+  }
+
   factory Pulse.fromString(String input, Pulse? previous, Pulse? delta) {
     final lines = input.split('\n');
     final a = Vec3(0, 0, 0);

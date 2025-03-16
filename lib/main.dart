@@ -7,7 +7,6 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:semistab/blue.dart';
 import 'package:semistab/pulse.dart';
 import 'package:semistab/utils.dart';
-import 'package:semistab/vec3.dart';
 
 void main() {
   runApp(const MyApp());
@@ -58,8 +57,8 @@ class _MyHomePageState extends State<MyHomePage> {
   BluetoothConnection? connection;
   String _buffer = '';
   final List<Pulse> _pulses = [];
-  // calib
-  final _calib = Pulse(a: Vec3.zero(), g: Vec3.zero());
+  // calibrate
+  final _calib = Pulse.zero();
   int _calibCountDown = 0;
 
   @override
@@ -148,7 +147,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _device = null;
     _pulses.clear();
     _buffer = '';
-    // TODO reset calib
+    _calib.a.reset();
+    _calib.g.reset();
     setState(() {});
     // Close connection
     await connection?.finish();
