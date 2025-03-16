@@ -19,66 +19,88 @@ class _GaugeState extends State<Gauge> {
     final start = 0.0;
     final mid = widget.threshold / 2;
     final stop = widget.threshold + mid;
-    return SfRadialGauge(
-      enableLoadingAnimation: true,
-      axes: <RadialAxis>[
-        RadialAxis(
-          minimum: start,
-          maximum: stop,
-          radiusFactor: 1, // TODO
-          axisLineStyle: AxisLineStyle(thickness: 0),
-          labelOffset: 40,
-          pointers: <GaugePointer>[
-            MarkerPointer(
-              value: widget.angle,
-              enableAnimation: true,
-              color: Colors.white,
-              markerOffset: 32,
-            ),
-          ],
-          ranges: <GaugeRange>[
-            GaugeRange(
-              startValue: 0,
-              startWidth: 20,
-              endWidth: 20,
-              endValue: stop,
-              gradient: SweepGradient(
-                colors: [
-                  Colors.tealAccent,
-                  Colors.yellowAccent,
-                  Colors.pinkAccent,
-                ],
-              ),
-            ),
-          ],
-          annotations: <GaugeAnnotation>[
-            GaugeAnnotation(
-              angle: 90,
-              positionFactor: 0.05,
-              widget: Padding(
-                padding: EdgeInsets.only(left: 28),
-                child: Text(
-                  '${widget.angle.toStringAsFixed(0)}°',
-                  style: TextStyle(
-                    fontSize: 92,
-                    fontWeight: FontWeight.w100,
-                    color: color?.shade100,
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Opacity(
+          opacity: 0.25,
+          child: Transform.scale(
+            scale: 2.0,
+            origin: Offset(0, 170),
+            child: Image.asset('assets/dial.png'),
+          ),
+        ),
+        SfRadialGauge(
+          enableLoadingAnimation: true,
+          axes: <RadialAxis>[
+            RadialAxis(
+              minimum: start,
+              maximum: stop,
+              radiusFactor: 2,
+              startAngle: 50,
+              endAngle: 180 - 50,
+              centerY: 0,
+              axisLineStyle: AxisLineStyle(thickness: 0),
+              labelOffset: 32 + 32,
+              pointers: <GaugePointer>[
+                MarkerPointer(
+                  value: widget.angle,
+                  enableAnimation: true,
+                  color: Colors.white,
+                  markerOffset: 32 + 12,
+                ),
+              ],
+              ranges: <GaugeRange>[
+                GaugeRange(
+                  startValue: 0,
+                  startWidth: 32,
+                  endWidth: 32,
+                  endValue: stop,
+                  gradient: SweepGradient(
+                    colors: [
+                      Colors.tealAccent,
+                      Colors.yellowAccent,
+                      Colors.pinkAccent,
+                    ],
                   ),
                 ),
-              ),
-            ),
-            GaugeAnnotation(
-              angle: 90,
-              positionFactor: 1.7,
-              widget: Column(
-                children: [
-                  Text(
-                    '${calcPressureOnNeck(widget.angle).toStringAsFixed(1)} Kg',
-                    style: TextStyle(fontSize: 22, color: color),
+              ],
+              annotations: <GaugeAnnotation>[
+                GaugeAnnotation(
+                  angle: 90,
+                  positionFactor: 0.25,
+                  widget: Padding(
+                    padding: EdgeInsets.only(left: 52),
+                    child: Text(
+                      '${widget.angle.toStringAsFixed(0)}°',
+                      style: TextStyle(
+                        fontSize: 168,
+                        fontWeight: FontWeight.w100,
+                        color: color?.shade100,
+                      ),
+                    ),
                   ),
-                  Text('extra weight on neck!', style: TextStyle(fontSize: 10)),
-                ],
-              ),
+                ),
+                GaugeAnnotation(
+                  angle: 90,
+                  positionFactor: 1.0,
+                  widget: Column(
+                    children: [
+                      Text(
+                        '${calcPressureOnNeck(widget.angle).toStringAsFixed(1)} Kg',
+                        style: TextStyle(
+                          fontSize: 22,
+                          color: color?.withAlpha(180),
+                        ),
+                      ),
+                      Text(
+                        'extra weight on neck!',
+                        style: TextStyle(fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
