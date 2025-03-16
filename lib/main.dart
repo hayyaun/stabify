@@ -5,15 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:semistab/blue.dart';
+import 'package:semistab/gauge.dart';
 import 'package:semistab/pulse.dart';
-import 'package:semistab/utils.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
-const maxThreshold = 40;
+const minThreshold = 10.0;
+const maxThreshold = 60.0;
+const defaultThreshold = 15.0;
 const calibLerpFactor = 0.33;
 const setRefCount = 3;
 const alertRange = 4; // seconds avg
@@ -50,8 +52,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
   final List<BluetoothDevice> _devices = [];
-  double thresholdFactor = 0.5;
-  String _message = 'Message';
+  double threshold = defaultThreshold;
+  String _message = '';
   // device
   BluetoothDevice? _device;
   BluetoothConnection? connection;
@@ -63,11 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    // look for bluetooth devices
-    scanDevices();
-    if (_devices.isNotEmpty) {
-      connectToDevice(_devices[0]);
-    }
+    scanAndConnect();
     super.initState();
   }
 
@@ -115,7 +113,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Device
 
-  void scanDevices() async {
+  Future<void> scanAndConnect() async {
+    // look for bluetooth devices
+    await scanDevices();
+    if (_devices.isNotEmpty) {
+      await connectToDevice(_devices[0]);
+    }
+  }
+
+  Future<void> scanDevices() async {
     try {
       // Skip permission request on Linux
       if (Platform.isAndroid || Platform.isIOS) {
@@ -147,8 +153,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _device = null;
     _pulses.clear();
     _buffer = '';
-    _calib.a.reset();
-    _calib.g.reset();
+    _calib.reset();
     setState(() {});
     // Close connection
     await connection?.finish();
@@ -158,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
-  void connectToDevice(BluetoothDevice device) async {
+  Future<void> connectToDevice(BluetoothDevice device) async {
     try {
       if (connection != null) {
         await disconnectDevice();
@@ -171,7 +176,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Connect to HC-05
       connection = await BluetoothConnection.toAddress(device.address);
-      _message = "Connected to device";
+      _message = "Connected to ${device.name}";
       setState(() {});
 
       // Listen for incoming data
@@ -187,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (kDebugMode) print(">> Ack sent!");
     } catch (err) {
       if (kDebugMode) print('>> connect: $err');
-      _message = 'Cannot connect, something went wrong!';
+      _message = 'Cannot connect, Try again!';
       setState(() {});
     }
   }
@@ -212,21 +217,85 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  get threshold => thresholdFactor * maxThreshold;
+  get connected => connection?.isConnected ?? false;
+
+  Widget buildDevices(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        spacing: 6,
+        children:
+            _devices.map((d) {
+              final active = d.address == _device?.address && connected;
+              return FilledButton(
+                onPressed: () async {
+                  if (active) {
+                    await disconnectDevice();
+                  } else {
+                    await connectToDevice(d);
+                  }
+                },
+                style: ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(
+                    active ? Colors.greenAccent : Colors.blueAccent,
+                  ),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        8,
+                      ), // Adjust roundness
+                    ),
+                  ),
+                  padding: WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      d.name ?? 'Device',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(d.address, style: TextStyle(fontSize: 8)),
+                  ],
+                ),
+              );
+            }).toList(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final connected = connection?.isConnected ?? false;
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(
-          widget.title,
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2.0,
-          ),
+      appBar: AppBar(),
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: 32,
+          children: [
+            IconButton(
+              icon: Icon(Icons.notifications, size: 22),
+              onPressed: () {},
+            ),
+            IconButton(
+              style: ButtonStyle(
+                padding: WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+                ),
+                backgroundColor: WidgetStatePropertyAll(
+                  Colors.white.withAlpha(15),
+                ),
+              ),
+              color: Colors.blueAccent.shade100,
+              icon: Icon(Icons.adjust, size: 22),
+              onPressed: beginCalibrate,
+            ),
+            IconButton(
+              icon: Icon(Icons.search, size: 22),
+              onPressed: scanAndConnect,
+            ),
+          ],
         ),
       ),
       body: SingleChildScrollView(
@@ -237,123 +306,56 @@ class _MyHomePageState extends State<MyHomePage> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Devices:', style: headingStyle),
-              Text(_message, style: Theme.of(context).textTheme.bodySmall),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  spacing: 6,
-                  children:
-                      _devices.map((d) {
-                        final active =
-                            d.address == _device?.address && connected;
-                        return FilledButton(
-                          onPressed: () {
-                            if (active) {
-                              disconnectDevice();
-                            } else {
-                              connectToDevice(d);
-                            }
-                          },
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStatePropertyAll(
-                              active ? Colors.greenAccent : Colors.blueAccent,
-                            ),
-                            shape: WidgetStateProperty.all(
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  8,
-                                ), // Adjust roundness
-                              ),
-                            ),
-                            padding: WidgetStatePropertyAll(
-                              EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 12,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                d.name ?? 'Device',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              Text(d.address, style: TextStyle(fontSize: 8)),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
               Text(
-                connected ? 'Connected: ${_device?.name}' : 'Disconnected!',
-                style: headingStyle,
-              ),
-              if (connected) ...[
-                FilledButton(
-                  onPressed: beginCalibrate,
-                  child: Text(
-                    'Set Reference${_calibCountDown == 0 ? '' : ' (${_calibCountDown}s)'}',
-                  ),
+                '.: ${widget.title.toUpperCase()} :.',
+                style: TextStyle(
+                  letterSpacing: 8,
+                  fontSize: 24,
+                  color: Colors.white.withAlpha(85),
                 ),
-              ],
-              const SizedBox(height: 20),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Gauge(
+                angle: _pulses.lastOrNull?.angle ?? 0,
+                threshold: threshold,
+              ),
+              const SizedBox(height: 0),
               Text(
                 'Threshold: ${(threshold).toStringAsFixed(0)}°',
                 style: headingStyle,
+                textAlign: TextAlign.center,
               ),
               Slider(
-                value: thresholdFactor,
+                min: minThreshold,
+                max: maxThreshold,
+                value: threshold,
+                padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                thumbColor: Colors.blueAccent.shade100,
+                activeColor: Colors.blueAccent.shade100.withAlpha(80),
+                divisions: 5,
                 onChanged: (v) {
-                  thresholdFactor = v;
+                  threshold = v;
                   setState(() {});
                 },
               ),
+              const SizedBox(height: 8),
+              if (_message.isNotEmpty)
+                Text(_message, textAlign: TextAlign.center),
+              if (_calibCountDown > 0)
+                Text(
+                  'Set Reference (${_calibCountDown}s)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.blueAccent.shade100),
+                ),
               const SizedBox(height: 20),
-              const Text('Angle:', style: headingStyle),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${_pulses.lastOrNull?.angle.round() ?? 0}°',
-                    style: TextStyle(
-                      color: getColorByAngle(
-                        _pulses.lastOrNull?.angle ?? 0,
-                        threshold,
-                      ).withAlpha(120),
-                      fontSize: 68,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 14, left: 4),
-                    child: Text(
-                      '~ ${calcPressureOnNeck(_pulses.lastOrNull?.angle ?? 0).toStringAsFixed(1)} Kg',
-                      style: TextStyle(
-                        color: getColorByAngle(
-                          _pulses.lastOrNull?.angle ?? 0,
-                          threshold,
-                        ),
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 16, left: 8),
-                    child: Text('extra weight on neck!', style: TextStyle()),
-                  ),
-                ],
-              ),
+              // const Text('Devices:', style: headingStyle),
+              // Text(_message, style: Theme.of(context).textTheme.bodySmall),
+              // buildDevices(context),
+              // SizedBox(height: 54),
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: scanDevices,
-        tooltip: 'Scan Devices',
-        child: const Icon(Icons.search),
       ),
     );
   }

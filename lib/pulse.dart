@@ -77,4 +77,11 @@ class Pulse {
   @override
   String toString() =>
       'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';
+
+  void reset() {
+    a.reset();
+    g.reset();
+    _previous?.reset();
+    _delta?.reset();
+  }
 }

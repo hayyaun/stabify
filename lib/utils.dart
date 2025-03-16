@@ -10,5 +10,5 @@ double calcPressureOnNeck(double theta) =>
 Color getColorByAngle(double angle, double threshold) {
   if (angle > threshold) return Colors.redAccent;
   if (angle > threshold / 2) return Colors.orangeAccent;
-  return Colors.greenAccent;
+  return Colors.white;
 }

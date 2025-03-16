@@ -3,18 +3,14 @@ import 'package:permission_handler/permission_handler.dart';
 
 Future<bool> checkBluetoothPermission() async {
   // Check if permissions were granted
-  if (await Permission.bluetooth.isGranted &&
+  return (await Permission.bluetooth.isGranted &&
       await Permission.bluetoothScan.isGranted &&
-      await Permission.bluetoothConnect.isGranted) {
-    return true;
-  }
-  return false;
+      await Permission.bluetoothConnect.isGranted);
 }
 
 Future<bool> requestBluetoothPermissions() async {
   try {
     if (await checkBluetoothPermission()) return true;
-
     await [
       Permission.bluetooth,
       Permission.bluetoothScan,
