@@ -246,12 +246,9 @@ class _MyHomePageState extends State<MyHomePage> {
       await disconnectDevice();
       if (kDebugMode) print(">> Removing previous connection");
 
-      // Set active device
-      _device = device;
-      setState(() {});
-
       // Connect to HC-05
       if (!await device.connect()) throw 'Cannot conenct';
+      _device = device; // set active device
       _message = "Connected to ${device.name}";
       connectedAt = DateTime.now();
       setState(() {});
