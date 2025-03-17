@@ -1,6 +1,6 @@
 {
-    "name": "semistab",
-    "short_name": "semistab",
+    "name": "virtstab",
+    "short_name": "virtstab",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#hexcode",

@@ -8,7 +8,7 @@
   <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
   <application
-    android:label="semistab"
+    android:label="VirtStab"
     android:name="${applicationName}"
     android:icon="@mipmap/launcher_icon"
   >

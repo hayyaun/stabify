@@ -4,11 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
-import 'package:semistab/blue.dart';
-import 'package:semistab/pulse.dart';
-import 'package:semistab/utils.dart';
-import 'package:semistab/widgets/gauge.dart';
-import 'package:semistab/widgets/spline.dart';
+import 'package:virtstab/blue.dart';
+import 'package:virtstab/pulse.dart';
+import 'package:virtstab/utils.dart';
+import 'package:virtstab/widgets/gauge.dart';
+import 'package:virtstab/widgets/spline.dart';
 
 void main() {
   runApp(const MyApp());

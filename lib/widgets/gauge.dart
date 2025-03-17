@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:semistab/utils.dart';
+import 'package:virtstab/utils.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 class Gauge extends StatefulWidget {
