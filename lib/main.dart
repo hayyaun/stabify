@@ -166,8 +166,10 @@ class _MyHomePageState extends State<MyHomePage> {
         .reduce((a1, a2) => a1 + a2);
     final avgAngle = total / alertDelay;
     if (avgAngle < threshold) return;
-    alertsCount++;
-    setState(() {});
+    if (player.state == PlayerState.playing) {
+      alertsCount++;
+      setState(() {});
+    }
     await player.play(AssetSource('alert.mp3'));
   }
 
@@ -476,17 +478,23 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Widget> get stats {
-    final space = 10;
-    final count = 10;
-    final limit = space * count;
-    List<ChartData> pulsesData = [];
-    if (_pulses.length > limit) {
-      for (int i = _pulses.length - limit; i < _pulses.length; i++) {
-        if (i % space != 0) continue;
-        final p = _pulses[i];
-        pulsesData.add(ChartData(i, p.angle));
+    final window = 10; // window window
+    final points = 10;
+    // final maxWindow = points * window;
+    final len = _pulses.length;
+    final pulsesData = List.generate(points, (i) {
+      final currWindow = (points - i) * window;
+      if (len > currWindow) {
+        final slice = _pulses.sublist(
+          len - currWindow,
+          len - currWindow + window,
+        );
+        final total = slice.map((p) => p.angle).reduce((a, b) => a + b);
+        final avg = total / slice.length.toDouble();
+        return ChartData(i, avg);
       }
-    }
+      return ChartData(i, 5);
+    });
     return [
       Spline(
         chartData: pulsesData,
