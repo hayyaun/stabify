@@ -26,7 +26,7 @@ const defaultAlertDelay = 4; // seconds avg
 // styles
 const px = 48.0;
 const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
-const chartSize = 128.0;
+const statSize = 128.0;
 const scrollDuration = Duration(milliseconds: 500);
 
 class MyApp extends StatelessWidget {
@@ -65,6 +65,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
   bool scrolledDown = false;
+  int alertsCount = 0;
+  DateTime? connectedAt;
   // config
   double threshold = defaultThreshold;
   int alertDelay = defaultAlertDelay;
@@ -85,6 +87,11 @@ class _MyHomePageState extends State<MyHomePage> {
   bool muted = false;
 
   get connected => _device != null && (connection?.isConnected ?? false);
+  get activeHours {
+    if (connectedAt == null) return '0\' 0"';
+    final diff = DateTime.now().difference(connectedAt!);
+    return '${diff.inHours}\' ${diff.inMinutes - diff.inHours * 60}"';
+  }
 
   @override
   void initState() {
@@ -159,6 +166,8 @@ class _MyHomePageState extends State<MyHomePage> {
         .reduce((a1, a2) => a1 + a2);
     final avgAngle = total / alertDelay;
     if (avgAngle < threshold) return;
+    alertsCount++;
+    setState(() {});
     await player.play(AssetSource('alert.mp3'));
   }
 
@@ -237,6 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // Connect to HC-05
       connection = await BluetoothConnection.toAddress(device.address);
       _message = "Connected to ${device.name}";
+      connectedAt = DateTime.now();
       setState(() {});
 
       // Listen for incoming data
@@ -415,12 +425,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
-                  height: chartSize,
+                  height: statSize,
                   child: ListView.separated(
-                    itemCount: charts.length,
+                    itemCount: stats.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 20),
                     scrollDirection: Axis.horizontal,
-                    itemBuilder: chartBuilder,
+                    itemBuilder: statBuilder,
                     padding: EdgeInsets.symmetric(horizontal: px),
                   ),
                 ),
@@ -465,7 +475,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  List<Widget> get charts {
+  List<Widget> get stats {
     final space = 10;
     final count = 10;
     final limit = space * count;
@@ -480,36 +490,95 @@ class _MyHomePageState extends State<MyHomePage> {
     return [
       Spline(
         chartData: pulsesData,
-        maximum: threshold,
+        maximum: threshold + threshold / 2,
         title: Text('Movement', style: textStyleBold),
       ),
-      Spline(
-        chartData: pulsesData,
-        maximum: threshold,
-        title: Text('Alerts', style: textStyleBold),
+      buildStatBox(
+        title: 'Alerts',
+        content: Text(
+          '$alertsCount',
+          style: TextStyle(
+            fontSize: 64,
+            fontWeight: FontWeight.w200,
+            color: primary,
+          ),
+        ),
+        caption: 'times',
       ),
-      Spline(
-        chartData: pulsesData,
-        maximum: threshold,
-        title: Text('Active', style: textStyleBold),
+      buildStatBox(
+        title: 'Active',
+        content: Text(
+          '$activeHours',
+          style: TextStyle(
+            fontSize: 44,
+            fontWeight: FontWeight.w200,
+            color: primary,
+          ),
+        ),
+        caption: 'hours',
       ),
-      Spline(
-        chartData: pulsesData,
-        maximum: threshold,
-        title: Text('Device:', style: textStyleBold),
-      ),
+      if (_device != null)
+        buildStatBox(
+          title: 'Device',
+          content: Text(
+            '${_device!.name}',
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w200,
+              color: primary,
+            ),
+            maxLines: 1,
+          ),
+          caption: connected ? 'connected' : '',
+        ),
     ];
   }
 
-  Widget chartBuilder(BuildContext context, int i) {
+  Widget buildStatBox({
+    required String title,
+    required Widget content,
+    required String caption,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      child: Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: textStyleBold),
+              Spacer(),
+              content,
+              Spacer(flex: 2),
+            ],
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Text(
+              caption.toUpperCase(),
+              style: TextStyle(
+                color: onSurface.withAlpha(120),
+                letterSpacing: 2,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget statBuilder(BuildContext context, int i) {
     return Container(
-      width: chartSize,
+      width: statSize,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: elevatedColor,
       ),
-      child: charts[i],
+      child: stats[i],
       // child: Stack(),
     );
   }
