@@ -100,22 +100,6 @@ class SensorDevice {
     }
   }
 
-  /// HC-05
-  Stream<Pulse> parseOutputToPulses() async* {
-    final boxes = _buffer.split('ax:');
-    // ignore last one - maybe it's not complete yet
-    for (int i = 0; i < boxes.length - 2; i++) {
-      // validate integrity of box
-      final box = 'ax:${boxes[i]}';
-      final corrupt = keys.any((k) => !box.contains(k));
-      if (corrupt) continue; // incomplete, let it append later on
-      final previous = _pulses.isEmpty ? null : _pulses.first;
-      final pulse = Pulse.fromString(box, previous, _calib);
-      _buffer = _buffer.replaceFirst(box, ''); // remove used box
-      yield pulse;
-    }
-  }
-
   // Clib
   void calibrate() {
     if (!isConnected) return;
@@ -135,5 +119,21 @@ class SensorDevice {
       _calib.g = _calib.g.lerp(pulse.g, a);
     }
     _calibCountDown -= 1;
+  }
+
+  /// HC-05 Custom device
+  Stream<Pulse> parseOutputToPulses() async* {
+    final boxes = _buffer.split('ax:');
+    // ignore last one - maybe it's not complete yet
+    for (int i = 0; i < boxes.length - 2; i++) {
+      // validate integrity of box
+      final box = 'ax:${boxes[i]}';
+      final corrupt = keys.any((k) => !box.contains(k));
+      if (corrupt) continue; // incomplete, let it append later on
+      final previous = _pulses.isEmpty ? null : _pulses.first;
+      final pulse = Pulse.fromString(box, previous, _calib);
+      _buffer = _buffer.replaceFirst(box, ''); // remove used box
+      yield pulse;
+    }
   }
 }
