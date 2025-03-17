@@ -1,4 +1,4 @@
-run: icon
+run: 
 	flutter run
 
 apk: clean pub icon

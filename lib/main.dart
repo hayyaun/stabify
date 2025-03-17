@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:virtstab/blue.dart';
+import 'package:virtstab/devices/device_manager.dart';
 import 'package:virtstab/pulse.dart';
 import 'package:virtstab/utils.dart';
 import 'package:virtstab/widgets/gauge.dart';
@@ -66,6 +67,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
+  bool scrolled = false;
   int alertsCount = 0;
   DateTime? connectedAt;
   // config
@@ -87,7 +89,10 @@ class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
   bool muted = false;
 
+  DeviceManager dm = DeviceManager();
+
   // getters
+
   bool get connected => _device != null && (connection?.isConnected ?? false);
 
   String get activeTime {
@@ -95,8 +100,6 @@ class _MyHomePageState extends State<MyHomePage> {
     final diff = DateTime.now().difference(connectedAt!);
     return '${diff.inHours}\' ${diff.inMinutes - diff.inHours * 60}"';
   }
-
-  bool scrolled = false;
 
   List<ChartData> get pulsesData {
     final len = _pulses.length;
@@ -549,11 +552,30 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         caption: 'hours',
       ),
-      if (_device != null)
-        buildStatBox(
+      // TODO show dialog instead
+      PopupMenuButton(
+        initialValue: _device,
+        borderRadius: BorderRadius.circular(20),
+        color: Color(0xff121212),
+        offset: Offset(0, -100),
+        onSelected: (BluetoothDevice item) {
+          _device = item;
+          setState(() {});
+        },
+        itemBuilder:
+            (BuildContext context) =>
+                _devices
+                    .map<PopupMenuEntry<BluetoothDevice>>(
+                      (d) => PopupMenuItem<BluetoothDevice>(
+                        value: d,
+                        child: Text(d.name ?? d.address.substring(0, 10)),
+                      ),
+                    )
+                    .toList(),
+        child: buildStatBox(
           title: 'Device',
           content: Text(
-            '${_device!.name}',
+            _device?.name ?? 'Connect',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w200,
@@ -561,8 +583,14 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             maxLines: 1,
           ),
-          caption: connected ? 'connected' : 'disconnected!',
+          caption:
+              _device == null
+                  ? 'now!'
+                  : connected
+                  ? 'connected'
+                  : 'disconnected!',
         ),
+      ),
     ];
   }
 
@@ -656,3 +684,5 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+enum SampleItem { itemOne, itemTwo, itemThree }
