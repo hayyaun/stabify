@@ -502,7 +502,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return [
       Spline(
         chartData: pulsesData,
-        maximum: threshold + threshold / 2,
+        maximum: threshold * 2,
         title: Text('Movement', style: textStyleBold),
       ),
       buildStatBox(
