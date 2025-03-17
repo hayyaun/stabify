@@ -24,9 +24,10 @@ const setRefCount = 3;
 const defaultAlertDelay = 4; // seconds avg
 
 // styles
+const px = 48.0;
 const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
 const chartSize = 128.0;
-const px = 48.0;
+const scrollDuration = Duration(milliseconds: 500);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -100,16 +101,16 @@ class _MyHomePageState extends State<MyHomePage> {
   void _scrollToTop() {
     _scrollController.animateTo(
       _scrollController.position.minScrollExtent,
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      duration: scrollDuration,
+      curve: Curves.easeInOut,
     );
   }
 
   void _scrollToBottom() {
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      duration: scrollDuration,
+      curve: Curves.easeInOut,
     );
   }
 
@@ -284,44 +285,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.transparent,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 32,
-          children: [
-            IconButton(
-              icon: Icon(
-                muted
-                    ? Icons.notifications_off_rounded
-                    : Icons.notifications_rounded,
-                size: 22,
-              ),
-              color: muted ? Colors.orangeAccent.shade100 : null,
-              onPressed: () {
-                muted = !muted;
-                setState(() {});
-              },
-            ),
-            IconButton(
-              style: ButtonStyle(
-                padding: WidgetStatePropertyAll(
-                  EdgeInsets.symmetric(vertical: 12, horizontal: 32),
-                ),
-                backgroundColor: WidgetStatePropertyAll(elevatedColor),
-              ),
-              color: _calibCountDown > 0 ? primary : null,
-              icon: Icon(Icons.adjust, size: 22),
-              onPressed: beginCalibrate,
-            ),
-            IconButton(
-              icon: Icon(Icons.bluetooth_rounded, size: 22),
-              onPressed: scanAndConnect,
-              color: scanning ? primary : null,
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: buildNavBar(),
       body: SizedBox(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -547,6 +511,47 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       child: charts[i],
       // child: Stack(),
+    );
+  }
+
+  Widget buildNavBar() {
+    return BottomAppBar(
+      color: Colors.transparent,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 32,
+        children: [
+          IconButton(
+            icon: Icon(
+              muted
+                  ? Icons.notifications_off_rounded
+                  : Icons.notifications_rounded,
+              size: 22,
+            ),
+            color: muted ? Colors.redAccent.shade100 : null,
+            onPressed: () {
+              muted = !muted;
+              setState(() {});
+            },
+          ),
+          IconButton(
+            style: ButtonStyle(
+              padding: WidgetStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+              ),
+              backgroundColor: WidgetStatePropertyAll(elevatedColor),
+            ),
+            color: _calibCountDown > 0 ? primary : null,
+            icon: Icon(Icons.adjust, size: 22),
+            onPressed: beginCalibrate,
+          ),
+          IconButton(
+            icon: Icon(Icons.bluetooth_rounded, size: 22),
+            onPressed: scanAndConnect,
+            color: scanning ? primary : null,
+          ),
+        ],
+      ),
     );
   }
 }
