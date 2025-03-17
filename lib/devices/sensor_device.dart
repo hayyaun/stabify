@@ -99,7 +99,7 @@ class SensorDevice {
     if (isPhone && isConnected) {
       await for (Pulse pulse in (device as PhoneSensors).pulses) {
         _pulses.add(pulse.copyWith(previous: _previous, delta: _calib));
-        _calibLerp();
+        _calibLerp(); // calibrate
         yield pulse;
       }
     }
