@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:virtstab/blue.dart';
-import 'package:virtstab/devices/device_manager.dart';
+import 'package:virtstab/devices/phone_sensors.dart';
+import 'package:virtstab/devices/sensor_device.dart';
 import 'package:virtstab/pulse.dart';
 import 'package:virtstab/utils.dart';
 import 'package:virtstab/widgets/gauge.dart';
@@ -21,16 +22,15 @@ const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
 const statSize = 128.0;
 const scrollDuration = Duration(milliseconds: 500);
 // config
-const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
 const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 15.0;
-const calibLerpFactor = 0.33;
-const setRefCount = 3;
 const defaultAlertDelay = 4; // seconds avg
 // spline
 const window = 5; // window window
 const points = 10;
+
+final phoneSensors = SensorDevice(device: PhoneSensors(), name: 'Sensors');
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -75,25 +75,17 @@ class _MyHomePageState extends State<MyHomePage> {
   int alertDelay = defaultAlertDelay;
   String _message = '';
   // device
-  final List<BluetoothDevice> _devices = [];
-  BluetoothDevice? _device;
-  BluetoothConnection? connection;
+  final List<SensorDevice> _devices = [];
+  SensorDevice _device = phoneSensors;
   bool scanning = false;
-  // data
-  String _buffer = '';
-  final List<Pulse> _pulses = [];
-  // calibrate
-  final _calib = Pulse.zero();
-  int _calibCountDown = 0;
+
   // audio
   final player = AudioPlayer();
   bool muted = false;
 
-  DeviceManager dm = DeviceManager();
-
   // getters
 
-  bool get connected => _device != null && (connection?.isConnected ?? false);
+  bool get connected => _device.isConnected;
 
   String get activeTime {
     if (connectedAt == null) return '0\' 0"';
@@ -102,11 +94,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<ChartData> get pulsesData {
-    final len = _pulses.length;
+    final len = _device.pulses.length;
     final data = List.generate(points, (i) {
       final currWindow = (points - i) * window;
       if (len > currWindow) {
-        final slice = _pulses.sublist(
+        final slice = _device.pulses.sublist(
           len - currWindow,
           len - currWindow + window,
         );
@@ -172,36 +164,13 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  //  Calibration
-
-  void beginCalibrate() {
-    if (!connected) return;
-    _calibCountDown = setRefCount;
-  }
-
-  void calibLerp() {
-    final pulse = _pulses.lastOrNull;
-    if (pulse == null) return;
-    if (_calibCountDown == 0) return;
-    if (_calibCountDown == setRefCount) {
-      _calib.a = pulse.a;
-      _calib.g = pulse.g;
-    } else {
-      final a = calibLerpFactor;
-      _calib.a = _calib.a.lerp(pulse.a, a);
-      _calib.g = _calib.g.lerp(pulse.g, a);
-    }
-    _calibCountDown -= 1;
-    setState(() {});
-  }
-
   // Audio Alert
 
   void checkAngleAlert() async {
     if (muted) return;
-    if (_pulses.length < alertDelay) return;
-    final start = _pulses.length - alertDelay;
-    final total = _pulses
+    if (_device.pulses.length < alertDelay) return;
+    final start = _device.pulses.length - alertDelay;
+    final total = _device.pulses
         .sublist(start)
         .map((p) => p.angle)
         .reduce((a1, a2) => a1 + a2);
@@ -238,13 +207,16 @@ class _MyHomePageState extends State<MyHomePage> {
       // reset previous list
       _devices.clear();
 
+      // add phone-sensor
+      _devices.add(phoneSensors);
+
       // Get a list of paired devices
       final devices = await FlutterBluetoothSerial.instance.getBondedDevices();
 
       // Find HC-05
       for (final device in devices) {
         if (device.name == "HC-05") {
-          _devices.add(device);
+          _devices.add(SensorDevice.fromBluetoothDevice(device));
           setState(() {});
         }
       }
@@ -262,70 +234,41 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> disconnectDevice() async {
     // clear device data
-    _device = null;
-    _pulses.clear();
-    _buffer = '';
-    _calib.reset();
+    await _device.disconnect();
     setState(() {});
-    // Close connection
-    await connection?.finish();
-    connection?.dispose();
     if (kDebugMode) print(">> Disconnected.");
     _message = 'Disconnected!';
     setState(() {});
   }
 
-  Future<void> connectToDevice(BluetoothDevice device) async {
+  Future<void> connectToDevice(SensorDevice device) async {
     try {
-      if (connection != null) {
-        await disconnectDevice();
-        if (kDebugMode) print(">> Removing previous connection");
-      }
+      await disconnectDevice();
+      if (kDebugMode) print(">> Removing previous connection");
 
       // Set active device
       _device = device;
       setState(() {});
 
       // Connect to HC-05
-      connection = await BluetoothConnection.toAddress(device.address);
+      if (!await device.connect()) throw 'Cannot conenct';
       _message = "Connected to ${device.name}";
       connectedAt = DateTime.now();
       setState(() {});
 
       // Listen for incoming data
-      connection!.input?.listen((Uint8List data) {
-        final output = String.fromCharCodes(data);
-        _buffer += output;
-        parseOutputToPulses();
+      device.input?.listen((Pulse data) {
+        // print('chunk: $data');
+        setState(() {}); // ensure data is up to date to user
+        checkAngleAlert(); // play alert
       });
 
       // Send data
-      connection!.output.add(Uint8List.fromList("A".codeUnits));
-      await connection!.output.allSent;
+      await device.begin();
       if (kDebugMode) print(">> Ack sent!");
     } catch (err) {
       if (kDebugMode) print('>> connect: $err');
       _message = 'Cannot connect, Try again!';
-      setState(() {});
-    }
-  }
-
-  // Main Pulse Parser
-
-  void parseOutputToPulses() {
-    final boxes = _buffer.split('ax:');
-    // ignore last one - maybe it's not complete yet
-    for (int i = 0; i < boxes.length - 2; i++) {
-      // validate integrity of box
-      final box = 'ax:${boxes[i]}';
-      final corrupt = keys.any((k) => !box.contains(k));
-      if (corrupt) continue; // incomplete, let it append later on
-      final previous = _pulses.isEmpty ? null : _pulses.first;
-      final pulse = Pulse.fromString(box, previous, _calib);
-      _pulses.add(pulse); // add pulse
-      checkAngleAlert(); // play alert
-      calibLerp(); // calibrate
-      _buffer = _buffer.replaceFirst(box, ''); // remove used box
       setState(() {});
     }
   }
@@ -358,7 +301,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Transform.translate(
                   offset: Offset(0, -160),
                   child: Gauge(
-                    angle: _pulses.lastOrNull?.angle ?? 0,
+                    angle: _device.pulses.lastOrNull?.angle ?? 0,
                     threshold: threshold,
                   ),
                 ),
@@ -370,9 +313,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   textAlign: TextAlign.center,
                 ),
                 Text(
-                  _calibCountDown == 0
-                      ? 'Reference at ${_calib.pitch.round()}°, ${_calib.roll.round()}°'
-                      : 'Set Reference (${_calibCountDown}s)',
+                  _device.calibCountDown == 0
+                      ? 'Reference at ${_device.calib.pitch.round()}°, ${_device.calib.roll.round()}°'
+                      : 'Set Reference (${_device.calibCountDown}s)',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: primary),
                 ),
@@ -558,24 +501,24 @@ class _MyHomePageState extends State<MyHomePage> {
         borderRadius: BorderRadius.circular(20),
         color: Color(0xff121212),
         offset: Offset(0, -100),
-        onSelected: (BluetoothDevice item) {
+        onSelected: (SensorDevice item) {
           _device = item;
           setState(() {});
         },
         itemBuilder:
             (BuildContext context) =>
                 _devices
-                    .map<PopupMenuEntry<BluetoothDevice>>(
-                      (d) => PopupMenuItem<BluetoothDevice>(
+                    .map<PopupMenuEntry<SensorDevice>>(
+                      (d) => PopupMenuItem<SensorDevice>(
                         value: d,
-                        child: Text(d.name ?? d.address.substring(0, 10)),
+                        child: Text(d.name),
                       ),
                     )
                     .toList(),
         child: buildStatBox(
           title: 'Device',
           content: Text(
-            _device?.name ?? 'Connect',
+            _device.name,
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w200,
@@ -583,12 +526,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             maxLines: 1,
           ),
-          caption:
-              _device == null
-                  ? 'now!'
-                  : connected
-                  ? 'connected'
-                  : 'disconnected!',
+          caption: connected ? 'connected' : 'disconnected!',
         ),
       ),
     ];
@@ -670,9 +608,9 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               backgroundColor: WidgetStatePropertyAll(elevatedColor),
             ),
-            color: _calibCountDown > 0 ? primary : null,
+            color: _device.calibCountDown > 0 ? primary : null,
             icon: Icon(Icons.adjust, size: 22),
-            onPressed: beginCalibrate,
+            onPressed: _device.calibrate,
           ),
           IconButton(
             icon: Icon(Icons.bluetooth_rounded, size: 22),

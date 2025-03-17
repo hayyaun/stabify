@@ -1,26 +1,23 @@
+import 'package:async/async.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:virtstab/pulse.dart';
+import 'package:virtstab/vec3.dart';
 
 class PhoneSensors {
-  PhoneSensors({required this.name, this.isConnected = false});
+  PhoneSensors();
 
-  final String name;
-  final bool isConnected;
-
-  addListeners() {
-    accelerometerEventStream(samplingPeriod: Duration(seconds: 1)).listen(
-      (AccelerometerEvent event) {
-        print(event);
-      },
-      onError: (error) {},
-      cancelOnError: true,
+  Stream<Pulse> get pulses {
+    final gyroStream = gyroscopeEventStream(
+      samplingPeriod: Duration(seconds: 1),
+    );
+    final accelStream = accelerometerEventStream(
+      samplingPeriod: Duration(seconds: 1),
     );
 
-    gyroscopeEventStream(samplingPeriod: Duration(seconds: 1)).listen(
-      (GyroscopeEvent event) {
-        print(event);
-      },
-      onError: (error) {},
-      cancelOnError: true,
-    );
+    return StreamZip([accelStream, gyroStream]).map((events) {
+      final a = events[0] as AccelerometerEvent;
+      final g = events[1] as GyroscopeEvent;
+      return Pulse(a: Vec3(a.x, a.y, a.z), g: Vec3(g.x, g.y, g.z));
+    });
   }
 }
