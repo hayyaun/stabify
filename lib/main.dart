@@ -134,6 +134,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Color get secondary => Theme.of(context).colorScheme.secondary;
   Color get elevatedColor => secondary.withAlpha(25);
 
+  // overrides
+
   @override
   void initState() {
     scanAndConnect();
