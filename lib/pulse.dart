@@ -8,8 +8,8 @@ const accelS9y = 16384.0; // 2g
 const gyroS9y = 131.0; // 250deg/s
 
 class Pulse {
-  Pulse? _previous, _delta;
   Vec3 a, g;
+  Pulse? _previous, _delta;
 
   Pulse({required this.a, required this.g, Pulse? previous, Pulse? delta})
     : _previous = previous,
