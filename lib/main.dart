@@ -191,7 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // look for bluetooth devices
     await scanDevices();
     if (_devices.isNotEmpty) {
-      await connectToDevice(_devices[0]);
+      await connectToDevice(_devices[1]);
     }
     scanning = false;
     setState(() {});
@@ -258,7 +258,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Listen for incoming data
       device.input?.listen((Pulse data) {
-        // print('chunk: $data');
+        if (kDebugMode) print('chunk: $data');
         setState(() {}); // ensure data is up to date to user
         checkAngleAlert(); // play alert
       });
@@ -501,8 +501,9 @@ class _MyHomePageState extends State<MyHomePage> {
         borderRadius: BorderRadius.circular(20),
         color: Color(0xff121212),
         offset: Offset(0, -100),
-        onSelected: (SensorDevice item) {
+        onSelected: (SensorDevice item) async {
           _device = item;
+          await connectToDevice(item);
           setState(() {});
         },
         itemBuilder:
