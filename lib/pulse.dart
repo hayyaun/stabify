@@ -80,6 +80,10 @@ class Pulse {
   String toString() =>
       'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';
 
+  Pulse copyWith({Pulse? previous, Pulse? delta}) {
+    return Pulse(a: a, g: g, delta: delta, previous: previous);
+  }
+
   void reset() {
     a.reset();
     g.reset();

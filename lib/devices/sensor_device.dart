@@ -31,6 +31,11 @@ class SensorDevice {
   Pulse get calib => _calib;
   int get calibCountDown => _calibCountDown;
 
+  // previous
+  Pulse? get _previous => _pulses.isEmpty ? null : _pulses.first;
+
+  // methods
+
   factory SensorDevice.fromBluetoothDevice(BluetoothDevice bt) {
     return SensorDevice(device: bt, name: bt.name ?? 'BT', address: bt.address);
   }
@@ -93,7 +98,7 @@ class SensorDevice {
     }
     if (isPhone && isConnected) {
       await for (Pulse pulse in (device as PhoneSensors).pulses) {
-        _pulses.add(pulse);
+        _pulses.add(pulse.copyWith(previous: _previous, delta: _calib));
         _calibLerp();
         yield pulse;
       }
@@ -130,8 +135,7 @@ class SensorDevice {
       final box = 'ax:${boxes[i]}';
       final corrupt = keys.any((k) => !box.contains(k));
       if (corrupt) continue; // incomplete, let it append later on
-      final previous = _pulses.isEmpty ? null : _pulses.first;
-      final pulse = Pulse.fromString(box, previous, _calib);
+      final pulse = Pulse.fromString(box, _previous, _calib);
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       yield pulse;
     }
