@@ -26,7 +26,7 @@ class _GaugeState extends State<Gauge> {
         alignment: Alignment.center,
         children: [
           Opacity(
-            opacity: 0.1,
+            opacity: 0.18,
             child: Transform.scale(
               scale: 2.1,
               child: ClipOval(

@@ -5,16 +5,9 @@ class Vec3 {
 
   Vec3(this.x, this.y, this.z);
 
-  /// Adds two vectors
   Vec3 operator +(Vec3 other) => Vec3(x + other.x, y + other.y, z + other.z);
-
-  /// Subtracts two vectors
   Vec3 operator -(Vec3 other) => Vec3(x - other.x, y - other.y, z - other.z);
-
-  /// Scalar multiplication
   Vec3 operator *(double scalar) => Vec3(x * scalar, y * scalar, z * scalar);
-
-  /// Scalar division
   Vec3 operator /(double scalar) => Vec3(x / scalar, y / scalar, z / scalar);
 
   /// Dot product
@@ -35,6 +28,8 @@ class Vec3 {
     double mag = magnitude();
     return mag == 0 ? Vec3(0, 0, 0) : this / mag;
   }
+
+  Vec3 lerp(Vec3 other, double t) => this * (1 - t) + other * t;
 
   factory Vec3.zero() => Vec3(0, 0, 0);
 

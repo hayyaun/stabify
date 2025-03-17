@@ -74,6 +74,8 @@ class Pulse {
   Pulse operator *(double n) => Pulse(a: a * n, g: a * n);
   Pulse operator /(double n) => Pulse(a: a / n, g: a / n);
 
+  Pulse lerp(Pulse other, double t) => this * (1 - t) + other * t;
+
   @override
   String toString() =>
       'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';

@@ -39,6 +39,8 @@ class _SplineState extends State<Spline> {
             minimum: 0,
             maximum: widget.maximum,
           ),
+          borderColor: Colors.transparent,
+          borderWidth: 0,
           series: <CartesianSeries>[
             SplineAreaSeries<ChartData, int>(
               dataSource: widget.chartData,
@@ -46,6 +48,15 @@ class _SplineState extends State<Spline> {
               borderWidth: 2,
               xValueMapper: (ChartData data, _) => data.x,
               yValueMapper: (ChartData data, _) => data.y,
+              gradient: LinearGradient(
+                colors: [
+                  Color.lerp(Colors.lightGreenAccent, primary, 0.25)!,
+                  Color.lerp(Colors.lightGreenAccent, primary, 0.75)!,
+                  primary,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ],
         ),

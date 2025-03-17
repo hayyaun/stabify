@@ -63,6 +63,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
+  bool scrolledDown = false;
   // config
   double threshold = defaultThreshold;
   int alertDelay = defaultAlertDelay;
@@ -96,12 +97,30 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
+  void _scrollToTop() {
+    _scrollController.animateTo(
+      _scrollController.position.minScrollExtent,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   void _scrollToBottom() {
     _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
       duration: Duration(milliseconds: 300),
       curve: Curves.easeOut,
     );
+  }
+
+  void _scrollToggle() {
+    if (scrolledDown) {
+      _scrollToTop();
+    } else {
+      _scrollToBottom();
+    }
+    scrolledDown = !scrolledDown;
+    setState(() {});
   }
 
   //  Calibration
@@ -120,8 +139,8 @@ class _MyHomePageState extends State<MyHomePage> {
       _calib.g = pulse.g;
     } else {
       final a = calibLerpFactor;
-      _calib.a = _calib.a * (1 - a) + pulse.a * a;
-      _calib.g = _calib.g * (1 - a) + pulse.g * a;
+      _calib.a = _calib.a.lerp(pulse.a, a);
+      _calib.g = _calib.g.lerp(pulse.g, a);
     }
     _calibCountDown -= 1;
     setState(() {});
@@ -345,7 +364,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   height: 48,
                   alignment: Alignment.center,
                   child: IconButton(
-                    onPressed: _scrollToBottom,
+                    onPressed: _scrollToggle,
                     padding: EdgeInsets.zero,
                     style: ButtonStyle(
                       shape: WidgetStatePropertyAll(
@@ -358,7 +377,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       backgroundColor: WidgetStatePropertyAll(elevatedColor),
                     ),
                     icon: Transform.rotate(
-                      angle: -90.0.toRadian(),
+                      angle: (scrolledDown ? 90 : -90).toDouble().toRadian(),
                       child: Icon(Icons.chevron_left),
                     ),
                     color: primary,
@@ -384,7 +403,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     vertical: 12,
                   ),
                   thumbColor: primary,
-                  activeColor: secondary.withAlpha(80),
+                  activeColor: secondary.withAlpha(70),
                   inactiveColor: Colors.transparent,
                   divisions: 5,
                   onChanged: (v) {
@@ -411,7 +430,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     vertical: 12,
                   ),
                   thumbColor: primary,
-                  activeColor: secondary.withAlpha(80),
+                  activeColor: secondary.withAlpha(70),
                   inactiveColor: Colors.transparent,
                   divisions: 10,
                   onChanged: (v) {
