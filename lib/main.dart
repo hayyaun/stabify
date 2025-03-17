@@ -73,7 +73,6 @@ class _MyHomePageState extends State<MyHomePage> {
   // config
   double threshold = defaultThreshold;
   int alertDelay = defaultAlertDelay;
-  String _message = '';
   // device
   final List<SensorDevice> _devices = [];
   SensorDevice _device = phoneSensors;
@@ -115,12 +114,13 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     scanAndConnect();
     _scrollController.addListener(scrollListener);
+    connectToDevice(_device); // no await - default sensors
     super.initState();
   }
 
   @override
   void dispose() async {
-    await disconnectDevice();
+    await disconnectActiveDevice();
     _scrollController.removeListener(scrollListener);
     _scrollController.dispose();
     super.dispose();
@@ -190,7 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
     // look for bluetooth devices
     await scanDevices();
-    if (_devices.isNotEmpty) {
+    if (_devices.length > 1) {
       await connectToDevice(_devices[1]);
     }
     scanning = false;
@@ -220,36 +220,28 @@ class _MyHomePageState extends State<MyHomePage> {
           setState(() {});
         }
       }
-
-      if (_devices.isEmpty) {
-        _message = 'Device not found!';
-        setState(() {});
-      }
     } catch (err) {
       if (kDebugMode) print('>> scan: $err');
-      _message = "Can't scan bluetooth devices!";
       setState(() {});
     }
   }
 
-  Future<void> disconnectDevice() async {
+  Future<void> disconnectActiveDevice() async {
     // clear device data
     await _device.disconnect();
     setState(() {});
     if (kDebugMode) print(">> Disconnected.");
-    _message = 'Disconnected!';
     setState(() {});
   }
 
   Future<void> connectToDevice(SensorDevice device) async {
     try {
-      await disconnectDevice();
-      if (kDebugMode) print(">> Removing previous connection");
-
-      // Connect to HC-05
+      // Connect to device
+      if (device == _device) await disconnectActiveDevice();
       if (!await device.connect()) throw 'Cannot conenct';
+      if (kDebugMode) print(">> Removing previous device");
+      if (device != _device) await disconnectActiveDevice();
       _device = device; // set active device
-      _message = "Connected to ${device.name}";
       connectedAt = DateTime.now();
       setState(() {});
 
@@ -265,7 +257,6 @@ class _MyHomePageState extends State<MyHomePage> {
       if (kDebugMode) print(">> Ack sent!");
     } catch (err) {
       if (kDebugMode) print('>> connect: $err');
-      _message = 'Cannot connect, Try again!';
       setState(() {});
     }
   }
@@ -274,6 +265,16 @@ class _MyHomePageState extends State<MyHomePage> {
   Color get primary => Theme.of(context).colorScheme.primary;
   Color get secondary => Theme.of(context).colorScheme.secondary;
   Color get elevatedColor => secondary.withAlpha(25);
+
+  String get connectionStatus {
+    if (connected) {
+      return "Connected to ${_device.name}!";
+    } else if (scanning) {
+      return "Connecting to ${_device.name}...";
+    } else {
+      return "Disconnected from ${_device.name}!";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -305,10 +306,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                 // Messages
                 const SizedBox(height: 48),
-                Text(
-                  _message.isEmpty ? 'Everything is fine!' : _message,
-                  textAlign: TextAlign.center,
-                ),
+                Text(connectionStatus, textAlign: TextAlign.center),
                 Text(
                   _device.calibCountDown == 0
                       ? 'Reference at ${_device.calib.pitch.round()}°, ${_device.calib.roll.round()}°'
