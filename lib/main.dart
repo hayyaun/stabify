@@ -64,7 +64,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
-  bool scrolledDown = false;
   int alertsCount = 0;
   DateTime? connectedAt;
   // config
@@ -86,49 +85,89 @@ class _MyHomePageState extends State<MyHomePage> {
   final player = AudioPlayer();
   bool muted = false;
 
-  get connected => _device != null && (connection?.isConnected ?? false);
-  get activeHours {
+  // getters
+  bool get connected => _device != null && (connection?.isConnected ?? false);
+
+  String get activeTime {
     if (connectedAt == null) return '0\' 0"';
     final diff = DateTime.now().difference(connectedAt!);
     return '${diff.inHours}\' ${diff.inMinutes - diff.inHours * 60}"';
   }
 
+  bool scrolled = false;
+
+  List<ChartData> get pulsesData {
+    final window = 5; // window window
+    final points = 10;
+    // final maxWindow = points * window;
+    final len = _pulses.length;
+    final data = List.generate(points, (i) {
+      final currWindow = (points - i) * window;
+      if (len > currWindow) {
+        final slice = _pulses.sublist(
+          len - currWindow,
+          len - currWindow + window,
+        );
+        final total = slice.map((p) => p.angle).reduce((a, b) => a + b);
+        final avg = total / slice.length.toDouble();
+        return ChartData(i, avg);
+      }
+      return ChartData(i, 5);
+    });
+    return data;
+  }
+
   @override
   void initState() {
     scanAndConnect();
+    _scrollController.addListener(scrollListener);
+    _scrollController.dispose();
     super.initState();
   }
 
   @override
   void dispose() async {
     await disconnectDevice();
+    _scrollController.removeListener(scrollListener);
     super.dispose();
   }
 
-  void _scrollToTop() {
-    _scrollController.animateTo(
+  // Scroll
+
+  void scrollListener() {
+    final max = _scrollController.position.maxScrollExtent;
+    if (_scrollController.offset == max && !scrolled) {
+      scrolled = true;
+      setState(() {});
+    } else if (_scrollController.offset == 0 && scrolled) {
+      scrolled = false;
+      setState(() {});
+    }
+  }
+
+  Future<void> _scrollToggle() async {
+    if (scrolled) {
+      await _scrollToTop();
+    } else {
+      await _scrollToBottom();
+    }
+    setState(() {}); // update button
+  }
+
+  Future<void> _scrollToTop() async {
+    await _scrollController.animateTo(
       _scrollController.position.minScrollExtent,
       duration: scrollDuration,
       curve: Curves.easeInOut,
     );
   }
 
-  void _scrollToBottom() {
-    _scrollController.animateTo(
+  Future<void> _scrollToBottom() async {
+    await _scrollController.animateTo(
       _scrollController.position.maxScrollExtent,
       duration: scrollDuration,
       curve: Curves.easeInOut,
     );
-  }
-
-  void _scrollToggle() {
-    if (scrolledDown) {
-      _scrollToTop();
-    } else {
-      _scrollToBottom();
-    }
-    scrolledDown = !scrolledDown;
-    setState(() {});
   }
 
   //  Calibration
@@ -289,27 +328,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  List<ChartData> get pulsesData {
-    final window = 5; // window window
-    final points = 10;
-    // final maxWindow = points * window;
-    final len = _pulses.length;
-    final data = List.generate(points, (i) {
-      final currWindow = (points - i) * window;
-      if (len > currWindow) {
-        final slice = _pulses.sublist(
-          len - currWindow,
-          len - currWindow + window,
-        );
-        final total = slice.map((p) => p.angle).reduce((a, b) => a + b);
-        final avg = total / slice.length.toDouble();
-        return ChartData(i, avg);
-      }
-      return ChartData(i, 5);
-    });
-    return data;
-  }
-
   Color get onSurface => Theme.of(context).colorScheme.onSurface;
   Color get primary => Theme.of(context).colorScheme.primary;
   Color get secondary => Theme.of(context).colorScheme.secondary;
@@ -329,11 +347,14 @@ class _MyHomePageState extends State<MyHomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Title
                 const SizedBox(height: 12),
                 SafeArea(top: true, child: buildTitle()),
+
+                // Guage
                 const SizedBox(height: 12),
                 Transform.translate(
-                  offset: Offset(0, -200),
+                  offset: Offset(0, -160),
                   child: Gauge(
                     angle: _pulses.lastOrNull?.angle ?? 0,
                     threshold: threshold,
@@ -341,7 +362,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
 
                 // Messages
-                const SizedBox(height: 20),
+                const SizedBox(height: 48),
                 Text(
                   _message.isEmpty ? 'Everything is fine!' : _message,
                   textAlign: TextAlign.center,
@@ -374,7 +395,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       backgroundColor: WidgetStatePropertyAll(elevatedColor),
                     ),
                     icon: Transform.rotate(
-                      angle: (scrolledDown ? 90 : -90).toDouble().toRadian(),
+                      angle: (scrolled ? 90 : -90).toDouble().toRadian(),
                       child: Icon(Icons.chevron_left),
                     ),
                     color: primary,
@@ -520,7 +541,7 @@ class _MyHomePageState extends State<MyHomePage> {
       buildStatBox(
         title: 'Active',
         content: Text(
-          '$activeHours',
+          '$activeTime',
           style: TextStyle(
             fontSize: 44,
             fontWeight: FontWeight.w200,
@@ -537,11 +558,11 @@ class _MyHomePageState extends State<MyHomePage> {
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w200,
-              color: primary,
+              color: connected ? primary : Colors.redAccent.shade100,
             ),
             maxLines: 1,
           ),
-          caption: connected ? 'connected' : '',
+          caption: connected ? 'connected' : 'disconnected!',
         ),
     ];
   }
