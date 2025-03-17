@@ -26,7 +26,7 @@ const scrollDuration = Duration(milliseconds: 500);
 // config
 const minThreshold = 10.0;
 const maxThreshold = 60.0;
-const defaultThreshold = 15.0;
+const defaultThreshold = 30.0;
 const defaultAlertDelay = 4; // seconds avg
 const bluetoothDeviceName = "HC-05";
 // spline
@@ -461,7 +461,7 @@ class _MyHomePageState extends State<MyHomePage> {
         content: Text(
           '$_alertsCount',
           style: TextStyle(
-            fontSize: 64,
+            fontSize: 58,
             fontWeight: FontWeight.w200,
             color: primary,
           ),
