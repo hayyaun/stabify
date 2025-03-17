@@ -8,9 +8,12 @@ import 'package:virtstab/blue.dart';
 import 'package:virtstab/devices/phone_sensors.dart';
 import 'package:virtstab/devices/sensor_device.dart';
 import 'package:virtstab/pulse.dart';
+import 'package:virtstab/styles.dart';
 import 'package:virtstab/utils.dart';
+import 'package:virtstab/widgets/app_title.dart';
 import 'package:virtstab/widgets/gauge.dart';
 import 'package:virtstab/widgets/spline.dart';
+import 'package:virtstab/widgets/stat_box.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,7 +21,6 @@ void main() {
 
 // styles
 const px = 48.0;
-const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
 const statSize = 128.0;
 const scrollDuration = Duration(milliseconds: 500);
 // config
@@ -26,6 +28,7 @@ const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 15.0;
 const defaultAlertDelay = 4; // seconds avg
+const bluetoothDeviceName = "HC-05";
 // spline
 const window = 5; // window window
 const points = 10;
@@ -120,7 +123,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Color get onSurface => Theme.of(context).colorScheme.onSurface;
   Color get primary => Theme.of(context).colorScheme.primary;
   Color get secondary => Theme.of(context).colorScheme.secondary;
   Color get elevatedColor => secondary.withAlpha(25);
@@ -230,7 +232,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Find HC-05
       for (final device in devices) {
-        if (device.name == "HC-05") {
+        if (device.name == bluetoothDeviceName) {
           _devices.add(SensorDevice.fromBluetoothDevice(device));
           setState(() {});
         }
@@ -242,9 +244,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> disconnectActiveDevice() async {
-    // clear device data
-    await _device.disconnect();
-    setState(() {});
+    await _device.disconnect(); // clear device data
     if (kDebugMode) print(">> Disconnected.");
     setState(() {});
   }
@@ -282,7 +282,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: buildNavBar(),
+      bottomNavigationBar: buildNavigationBar(),
       body: SizedBox(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -295,7 +295,7 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 // Title
                 const SizedBox(height: 12),
-                SafeArea(top: true, child: buildTitle()),
+                SafeArea(top: true, child: AppTitle()),
 
                 // Guage
                 const SizedBox(height: 12),
@@ -400,7 +400,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                 ),
 
-                // Charts
+                // Statistics
                 const SizedBox(height: 68),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: px),
@@ -431,37 +431,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget buildTitle() {
-    return Text.rich(
-      textAlign: TextAlign.center,
-      TextSpan(
-        style: TextStyle(fontSize: 24, letterSpacing: 8),
-        children: [
-          TextSpan(
-            text: '.:: ',
-            style: TextStyle(
-              color: secondary.withAlpha(30),
-            ), // Semi-transparent
-          ),
-          TextSpan(
-            text: 'VIRT',
-            style: TextStyle(color: secondary.withAlpha(50)), // Blue text
-          ),
-          TextSpan(
-            text: 'STAB',
-            style: TextStyle(color: onSurface.withAlpha(140)), // Blue text
-          ),
-          TextSpan(
-            text: ' ::.',
-            style: TextStyle(
-              color: secondary.withAlpha(30),
-            ), // Semi-transparent
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget statBuilder(BuildContext context, int i) {
     return Container(
       width: statSize,
@@ -482,7 +451,7 @@ class _MyHomePageState extends State<MyHomePage> {
         maximum: threshold * 2,
         title: Text('Movement', style: textStyleBold),
       ),
-      buildStatBox(
+      StatBox(
         title: 'Alerts',
         content: Text(
           '$alertsCount',
@@ -494,7 +463,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         caption: 'times',
       ),
-      buildStatBox(
+      StatBox(
         title: 'Active',
         content: Text(
           activeTime,
@@ -509,7 +478,7 @@ class _MyHomePageState extends State<MyHomePage> {
       InkWell(
         onTap: openSelectionDialog,
         radius: 16,
-        child: buildStatBox(
+        child: StatBox(
           title: 'Device',
           content: Text(
             _device.name,
@@ -531,10 +500,16 @@ class _MyHomePageState extends State<MyHomePage> {
     ];
   }
 
-  void onDeviceSelected(SensorDevice item) async {
-    _device = item;
-    await connectToDevice(item);
-    setState(() {});
+  Widget selectDialogItem(SensorDevice item) {
+    return SimpleDialogOption(
+      child: Text(item.name),
+      onPressed: () async {
+        Navigator.pop(context);
+        _device = item;
+        await connectToDevice(item);
+        setState(() {});
+      },
+    );
   }
 
   void openSelectionDialog() async {
@@ -545,60 +520,13 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext context) {
         return SimpleDialog(
           title: Text('Select a device'),
-          children:
-              _devices
-                  .map(
-                    (item) => SimpleDialogOption(
-                      child: Text(item.name),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        onDeviceSelected(item);
-                      },
-                    ),
-                  )
-                  .toList(),
+          children: _devices.map(selectDialogItem).toList(),
         );
       },
     );
   }
 
-  Widget buildStatBox({
-    required String title,
-    required Widget content,
-    required String caption,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      child: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(title, style: textStyleBold),
-              Spacer(),
-              content,
-              Spacer(flex: 2),
-            ],
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Text(
-              caption.toUpperCase(),
-              style: TextStyle(
-                color: onSurface.withAlpha(120),
-                letterSpacing: 2,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildNavBar() {
+  Widget buildNavigationBar() {
     return BottomAppBar(
       color: Colors.transparent,
       child: Row(
