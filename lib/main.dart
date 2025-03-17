@@ -5,14 +5,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:semistab/blue.dart';
-import 'package:semistab/gauge.dart';
 import 'package:semistab/pulse.dart';
 import 'package:semistab/utils.dart';
+import 'package:semistab/widgets/gauge.dart';
+import 'package:semistab/widgets/spline.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
+// config
 const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
 const minThreshold = 10.0;
 const maxThreshold = 60.0;
@@ -21,7 +23,10 @@ const calibLerpFactor = 0.33;
 const setRefCount = 3;
 const defaultAlertDelay = 4; // seconds avg
 
-const headingStyle = TextStyle(fontWeight: FontWeight.bold);
+// styles
+const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
+const chartSize = 128.0;
+const px = 48.0;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -35,7 +40,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
       ),
       darkTheme: ThemeData(
-        colorScheme: ColorScheme.dark(primary: Colors.limeAccent.shade200),
+        colorScheme: ColorScheme.dark(
+          primary: Colors.limeAccent.shade200,
+          secondary: Colors.blueAccent.shade100,
+        ).copyWith(surface: Colors.black),
       ),
       themeMode: ThemeMode.dark,
       home: const MyHomePage(title: 'VirtStab'),
@@ -251,42 +259,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Color get onSurface => Theme.of(context).colorScheme.onSurface;
   Color get primary => Theme.of(context).colorScheme.primary;
-
-  Widget buildTitle() {
-    return Text.rich(
-      textAlign: TextAlign.center,
-      TextSpan(
-        style: TextStyle(fontSize: 24, letterSpacing: 8),
-        children: [
-          TextSpan(
-            text: '.: ',
-            style: TextStyle(
-              color: onSurface.withAlpha(50),
-            ), // Semi-transparent
-          ),
-          TextSpan(
-            text: 'VIRT',
-            style: TextStyle(color: onSurface.withAlpha(80)), // Blue text
-          ),
-          TextSpan(
-            text: 'STAB',
-            style: TextStyle(color: onSurface.withAlpha(180)), // Blue text
-          ),
-          TextSpan(
-            text: ' :.',
-            style: TextStyle(
-              color: onSurface.withAlpha(50),
-            ), // Semi-transparent
-          ),
-        ],
-      ),
-    );
-  }
+  Color get secondary => Theme.of(context).colorScheme.secondary;
+  Color get elevatedColor => secondary.withAlpha(25);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: BottomAppBar(
+        color: Colors.transparent,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: 32,
@@ -309,9 +289,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: WidgetStatePropertyAll(
                   EdgeInsets.symmetric(vertical: 12, horizontal: 32),
                 ),
-                backgroundColor: WidgetStatePropertyAll(
-                  Colors.white.withAlpha(15),
-                ),
+                backgroundColor: WidgetStatePropertyAll(elevatedColor),
               ),
               color: _calibCountDown > 0 ? primary : null,
               icon: Icon(Icons.adjust, size: 22),
@@ -329,7 +307,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: SingleChildScrollView(
           controller: _scrollController,
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(0),
             child: Column(
               spacing: 12,
               mainAxisAlignment: MainAxisAlignment.start,
@@ -377,9 +355,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           ), // Adjust radius here
                         ),
                       ),
-                      backgroundColor: WidgetStatePropertyAll(
-                        primary.withAlpha(10),
-                      ),
+                      backgroundColor: WidgetStatePropertyAll(elevatedColor),
                     ),
                     icon: Transform.rotate(
                       angle: -90.0.toRadian(),
@@ -395,7 +371,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'Threshold: ${(threshold).toStringAsFixed(0)}°',
-                    style: headingStyle,
+                    style: textStyleBold,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -403,11 +379,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   min: minThreshold,
                   max: maxThreshold,
                   value: threshold,
-                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: px + 12,
+                    vertical: 12,
+                  ),
                   thumbColor: primary,
-                  activeColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withAlpha(80),
+                  activeColor: secondary.withAlpha(80),
+                  inactiveColor: Colors.transparent,
                   divisions: 5,
                   onChanged: (v) {
                     threshold = v;
@@ -420,7 +398,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Text(
                     'Alert Delay: ${alertDelay}s',
-                    style: headingStyle,
+                    style: textStyleBold,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -428,11 +406,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   min: 1,
                   max: 10,
                   value: alertDelay.toDouble(),
-                  padding: EdgeInsets.symmetric(horizontal: 64, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: px + 12,
+                    vertical: 12,
+                  ),
                   thumbColor: primary,
-                  activeColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withAlpha(80),
+                  activeColor: secondary.withAlpha(80),
+                  inactiveColor: Colors.transparent,
                   divisions: 10,
                   onChanged: (v) {
                     alertDelay = v.toInt();
@@ -440,12 +420,114 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                 ),
 
-                const SizedBox(height: 20),
+                // Charts
+                const SizedBox(height: 68),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: px),
+                  child: Text(
+                    'Statistics',
+                    style: textStyleBold,
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: chartSize,
+                  child: ListView.separated(
+                    itemCount: charts.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 20),
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: chartBuilder,
+                    padding: EdgeInsets.symmetric(horizontal: px),
+                  ),
+                ),
+
+                const SizedBox(height: 68),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget buildTitle() {
+    return Text.rich(
+      textAlign: TextAlign.center,
+      TextSpan(
+        style: TextStyle(fontSize: 24, letterSpacing: 8),
+        children: [
+          TextSpan(
+            text: '.:: ',
+            style: TextStyle(
+              color: secondary.withAlpha(30),
+            ), // Semi-transparent
+          ),
+          TextSpan(
+            text: 'VIRT',
+            style: TextStyle(color: secondary.withAlpha(50)), // Blue text
+          ),
+          TextSpan(
+            text: 'STAB',
+            style: TextStyle(color: onSurface.withAlpha(140)), // Blue text
+          ),
+          TextSpan(
+            text: ' ::.',
+            style: TextStyle(
+              color: secondary.withAlpha(30),
+            ), // Semi-transparent
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> get charts {
+    final space = 10;
+    final count = 10;
+    final limit = space * count;
+    List<ChartData> pulsesData = [];
+    if (_pulses.length > limit) {
+      for (int i = _pulses.length - limit; i < _pulses.length; i++) {
+        if (i % space != 0) continue;
+        final p = _pulses[i];
+        pulsesData.add(ChartData(i, p.angle));
+      }
+    }
+    return [
+      Spline(
+        chartData: pulsesData,
+        maximum: threshold,
+        title: Text('Movement', style: textStyleBold),
+      ),
+      Spline(
+        chartData: pulsesData,
+        maximum: threshold,
+        title: Text('Alerts', style: textStyleBold),
+      ),
+      Spline(
+        chartData: pulsesData,
+        maximum: threshold,
+        title: Text('Active', style: textStyleBold),
+      ),
+      Spline(
+        chartData: pulsesData,
+        maximum: threshold,
+        title: Text('Device:', style: textStyleBold),
+      ),
+    ];
+  }
+
+  Widget chartBuilder(BuildContext context, int i) {
+    return Container(
+      width: chartSize,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: elevatedColor,
+      ),
+      child: charts[i],
+      // child: Stack(),
     );
   }
 }

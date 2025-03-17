@@ -26,10 +26,18 @@ class _GaugeState extends State<Gauge> {
         alignment: Alignment.center,
         children: [
           Opacity(
-            opacity: 0.25,
+            opacity: 0.1,
             child: Transform.scale(
               scale: 2.1,
-              child: Image.asset('assets/dial.png'),
+              child: ClipOval(
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Colors.blueAccent.withAlpha(120),
+                    BlendMode.darken,
+                  ),
+                  child: Image.asset('assets/dial.png'),
+                ),
+              ),
             ),
           ),
           SfRadialGauge(

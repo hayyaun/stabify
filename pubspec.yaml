@@ -41,6 +41,7 @@ dependencies:
       ref: master
   audioplayers: ^6.4.0
   syncfusion_flutter_gauges: ^28.2.11
+  syncfusion_flutter_charts: ^28.2.11
 
 dev_dependencies:
   flutter_test:
