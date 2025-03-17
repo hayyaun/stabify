@@ -1,7 +1,10 @@
 run: 
 	flutter run
 
-apk: clean pub icon
+apk: icon
+	flutter build apk --split-per-abi
+
+apk-clean: clean pub icon
 	flutter build apk --split-per-abi
 
 linux: clean pub icon

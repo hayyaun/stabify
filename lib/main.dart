@@ -77,7 +77,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<SensorDevice> _devices = [];
   SensorDevice _device = phoneSensors;
   bool scanning = false;
-
+  bool connecting = false;
   // audio
   final player = AudioPlayer();
   bool muted = false;
@@ -109,6 +109,21 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     return data;
   }
+
+  String get connectionStatus {
+    if (connecting) {
+      return "Connecting to ${_device.name}...";
+    } else if (connected) {
+      return "Connected to ${_device.name}!";
+    } else {
+      return "Disconnected from ${_device.name}!";
+    }
+  }
+
+  Color get onSurface => Theme.of(context).colorScheme.onSurface;
+  Color get primary => Theme.of(context).colorScheme.primary;
+  Color get secondary => Theme.of(context).colorScheme.secondary;
+  Color get elevatedColor => secondary.withAlpha(25);
 
   @override
   void initState() {
@@ -235,6 +250,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> connectToDevice(SensorDevice device) async {
+    connecting = true;
     try {
       // Connect to device
       if (device == _device) await disconnectActiveDevice();
@@ -259,21 +275,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (kDebugMode) print('>> connect: $err');
       setState(() {});
     }
-  }
-
-  Color get onSurface => Theme.of(context).colorScheme.onSurface;
-  Color get primary => Theme.of(context).colorScheme.primary;
-  Color get secondary => Theme.of(context).colorScheme.secondary;
-  Color get elevatedColor => secondary.withAlpha(25);
-
-  String get connectionStatus {
-    if (connected) {
-      return "Connected to ${_device.name}!";
-    } else if (scanning) {
-      return "Connecting to ${_device.name}...";
-    } else {
-      return "Disconnected from ${_device.name}!";
-    }
+    connecting = false;
+    setState(() {});
   }
 
   @override
@@ -459,6 +462,19 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Widget statBuilder(BuildContext context, int i) {
+    return Container(
+      width: statSize,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: elevatedColor,
+      ),
+      child: stats[i],
+      // child: Stack(),
+    );
+  }
+
   List<Widget> get stats {
     return [
       Spline(
@@ -490,27 +506,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         caption: 'hours',
       ),
-      // TODO show dialog instead
-      PopupMenuButton(
-        initialValue: _device,
-        borderRadius: BorderRadius.circular(20),
-        color: Color(0xff121212),
-        offset: Offset(0, -100),
-        onSelected: (SensorDevice item) async {
-          _device = item;
-          await connectToDevice(item);
-          setState(() {});
-        },
-        itemBuilder:
-            (BuildContext context) =>
-                _devices
-                    .map<PopupMenuEntry<SensorDevice>>(
-                      (d) => PopupMenuItem<SensorDevice>(
-                        value: d,
-                        child: Text(d.name),
-                      ),
-                    )
-                    .toList(),
+      InkWell(
+        onTap: openSelectionDialog,
+        radius: 16,
         child: buildStatBox(
           title: 'Device',
           content: Text(
@@ -522,10 +520,46 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             maxLines: 1,
           ),
-          caption: connected ? 'connected' : 'disconnected!',
+          caption:
+              connecting
+                  ? 'connecting'
+                  : connected
+                  ? 'connected'
+                  : 'disconnected',
         ),
       ),
     ];
+  }
+
+  void onDeviceSelected(SensorDevice item) async {
+    _device = item;
+    await connectToDevice(item);
+    setState(() {});
+  }
+
+  void openSelectionDialog() async {
+    await scanDevices();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: Text('Select a device'),
+          children:
+              _devices
+                  .map(
+                    (item) => SimpleDialogOption(
+                      child: Text(item.name),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onDeviceSelected(item);
+                      },
+                    ),
+                  )
+                  .toList(),
+        );
+      },
+    );
   }
 
   Widget buildStatBox({
@@ -564,19 +598,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget statBuilder(BuildContext context, int i) {
-    return Container(
-      width: statSize,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: elevatedColor,
-      ),
-      child: stats[i],
-      // child: Stack(),
-    );
-  }
-
   Widget buildNavBar() {
     return BottomAppBar(
       color: Colors.transparent,
@@ -610,8 +631,9 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           IconButton(
             icon: Icon(Icons.bluetooth_rounded, size: 22),
-            onPressed: scanAndConnect,
-            color: scanning ? primary : null,
+            onPressed:
+                () => connectToDevice(_device), // connect selected device
+            color: connecting ? primary : null,
           ),
         ],
       ),
