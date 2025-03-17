@@ -166,7 +166,7 @@ class _MyHomePageState extends State<MyHomePage> {
         .reduce((a1, a2) => a1 + a2);
     final avgAngle = total / alertDelay;
     if (avgAngle < threshold) return;
-    if (player.state == PlayerState.playing) {
+    if (player.state == PlayerState.completed) {
       alertsCount++;
       setState(() {});
     }
@@ -287,6 +287,27 @@ class _MyHomePageState extends State<MyHomePage> {
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       setState(() {});
     }
+  }
+
+  List<ChartData> get pulsesData {
+    final window = 5; // window window
+    final points = 10;
+    // final maxWindow = points * window;
+    final len = _pulses.length;
+    final data = List.generate(points, (i) {
+      final currWindow = (points - i) * window;
+      if (len > currWindow) {
+        final slice = _pulses.sublist(
+          len - currWindow,
+          len - currWindow + window,
+        );
+        final total = slice.map((p) => p.angle).reduce((a, b) => a + b);
+        final avg = total / slice.length.toDouble();
+        return ChartData(i, avg);
+      }
+      return ChartData(i, 5);
+    });
+    return data;
   }
 
   Color get onSurface => Theme.of(context).colorScheme.onSurface;
@@ -478,23 +499,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Widget> get stats {
-    final window = 10; // window window
-    final points = 10;
-    // final maxWindow = points * window;
-    final len = _pulses.length;
-    final pulsesData = List.generate(points, (i) {
-      final currWindow = (points - i) * window;
-      if (len > currWindow) {
-        final slice = _pulses.sublist(
-          len - currWindow,
-          len - currWindow + window,
-        );
-        final total = slice.map((p) => p.angle).reduce((a, b) => a + b);
-        final avg = total / slice.length.toDouble();
-        return ChartData(i, avg);
-      }
-      return ChartData(i, 5);
-    });
     return [
       Spline(
         chartData: pulsesData,
