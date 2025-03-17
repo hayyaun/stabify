@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
+const offsetMinY = 5;
+
 class ChartData {
   ChartData(this.x, this.y);
   final int x;
-  final double? y;
+  final double y;
 }
 
 class Spline extends StatefulWidget {
@@ -26,6 +28,8 @@ class Spline extends StatefulWidget {
 class _SplineState extends State<Spline> {
   Color get primary => Theme.of(context).colorScheme.primary;
   Color get secondary => Theme.of(context).colorScheme.secondary;
+  List<ChartData> get chartData =>
+      widget.chartData.map((d) => ChartData(d.x, d.y + offsetMinY)).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,7 @@ class _SplineState extends State<Spline> {
           borderWidth: 0,
           series: <CartesianSeries>[
             SplineAreaSeries<ChartData, int>(
-              dataSource: widget.chartData,
+              dataSource: chartData,
               animationDuration: 0,
               borderWidth: 2,
               xValueMapper: (ChartData data, _) => data.x,

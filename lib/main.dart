@@ -14,6 +14,11 @@ void main() {
   runApp(const MyApp());
 }
 
+// styles
+const px = 48.0;
+const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
+const statSize = 128.0;
+const scrollDuration = Duration(milliseconds: 500);
 // config
 const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
 const minThreshold = 10.0;
@@ -22,12 +27,9 @@ const defaultThreshold = 15.0;
 const calibLerpFactor = 0.33;
 const setRefCount = 3;
 const defaultAlertDelay = 4; // seconds avg
-
-// styles
-const px = 48.0;
-const textStyleBold = TextStyle(fontWeight: FontWeight.bold);
-const statSize = 128.0;
-const scrollDuration = Duration(milliseconds: 500);
+// spline
+const window = 5; // window window
+const points = 10;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -97,9 +99,6 @@ class _MyHomePageState extends State<MyHomePage> {
   bool scrolled = false;
 
   List<ChartData> get pulsesData {
-    final window = 5; // window window
-    final points = 10;
-    // final maxWindow = points * window;
     final len = _pulses.length;
     final data = List.generate(points, (i) {
       final currWindow = (points - i) * window;
@@ -112,7 +111,7 @@ class _MyHomePageState extends State<MyHomePage> {
         final avg = total / slice.length.toDouble();
         return ChartData(i, avg);
       }
-      return ChartData(i, 5);
+      return ChartData(i, 0);
     });
     return data;
   }
@@ -121,7 +120,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     scanAndConnect();
     _scrollController.addListener(scrollListener);
-    _scrollController.dispose();
     super.initState();
   }
 
@@ -129,6 +127,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() async {
     await disconnectDevice();
     _scrollController.removeListener(scrollListener);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -541,7 +540,7 @@ class _MyHomePageState extends State<MyHomePage> {
       buildStatBox(
         title: 'Active',
         content: Text(
-          '$activeTime',
+          activeTime,
           style: TextStyle(
             fontSize: 44,
             fontWeight: FontWeight.w200,
