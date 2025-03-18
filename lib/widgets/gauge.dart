@@ -16,7 +16,7 @@ class _GaugeState extends State<Gauge> {
   @override
   Widget build(BuildContext context) {
     final color = getColorByAngle(widget.angle, widget.threshold);
-    final start = 0.0;
+    const start = 0.0;
     final mid = widget.threshold / 2;
     final stop = widget.threshold + mid;
     return SizedBox(
@@ -59,7 +59,7 @@ class _GaugeState extends State<Gauge> {
                     markerOffset: 32 + 12,
                   ),
                 ],
-                ranges: <GaugeRange>[
+                ranges: [
                   GaugeRange(
                     startValue: 0,
                     startWidth: 32,
@@ -74,7 +74,7 @@ class _GaugeState extends State<Gauge> {
                     ),
                   ),
                 ],
-                annotations: <GaugeAnnotation>[
+                annotations: [
                   GaugeAnnotation(
                     angle: 90,
                     positionFactor: 0.25,

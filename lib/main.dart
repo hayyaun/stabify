@@ -26,6 +26,7 @@ const statSize = 128.0;
 const scrollDuration = Duration(milliseconds: 500);
 // config
 const appName = 'Stabify';
+const appNameUpper = 'STABIFY';
 const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 30.0;
@@ -284,13 +285,12 @@ class _MyHomePageState extends State<MyHomePage> {
           _devices.add(
             SensorDevice.fromBluetoothDevice(device, DeviceType.drcad),
           );
-          setState(() {});
         }
       }
     } catch (err) {
       if (kDebugMode) print('>> scan: $err');
-      setState(() {});
     }
+    setState(() {});
   }
 
   Future<void> connectToDevice(SensorDevice device) async {
@@ -298,13 +298,16 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       // Connect to device
       if (!await device.connect()) throw 'Cannot conenct';
+
+      // Remove current device before setting new
       if (kDebugMode) print(">> Removing previous device");
       if (device != _device) await _device.disconnect();
       await _updateDevice(device); // set active device
 
       // Listen for incoming data
       device.input?.listen((Pulse data) {
-        // if (kDebugMode) print('>> chunk: $data');
+        /// Since all SensorDevices are configured to send 1s periodic pulse
+        /// `setState()` equals to `Timer.periodic(Duration(seconds: 1), ...)`.
         setState(() {}); // ensure data is up to date to user
         checkAngleAlert(); // play alert
       });
@@ -325,149 +328,146 @@ class _MyHomePageState extends State<MyHomePage> {
       body: SizedBox(
         child: SingleChildScrollView(
           controller: _scrollController,
-          child: Padding(
-            padding: EdgeInsets.all(0),
-            child: Column(
-              spacing: 12,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Title
-                const SizedBox(height: 12),
-                SafeArea(
-                  top: true,
-                  child: GradientMask(
-                    Text(
-                      '.:: ${appName.toUpperCase()} ::.',
-                      style: TextStyle(fontSize: 24, letterSpacing: 8),
-                      textAlign: TextAlign.center,
-                    ),
+          child: Column(
+            spacing: 12,
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Title
+              const SizedBox(height: 12),
+              const SafeArea(
+                top: true,
+                child: GradientMask(
+                  Text(
+                    '.:: $appNameUpper ::.',
+                    style: TextStyle(fontSize: 24, letterSpacing: 8),
+                    textAlign: TextAlign.center,
                   ),
                 ),
+              ),
 
-                // Guage
-                const SizedBox(height: 12),
-                Transform.translate(
-                  offset: Offset(0, -160),
-                  child: Gauge(
-                    angle: _device.pulses.lastOrNull?.angle ?? 0,
-                    threshold: _threshold,
-                  ),
+              // Guage
+              const SizedBox(height: 12),
+              Transform.translate(
+                offset: Offset(0, -160),
+                child: Gauge(
+                  angle: _device.pulses.lastOrNull?.angle ?? 0,
+                  threshold: _threshold,
                 ),
+              ),
 
-                // Messages
-                const SizedBox(height: 48),
-                Text(connectionStatus, textAlign: TextAlign.center),
-                Text(
-                  _device.calibCountDown == 0
-                      ? 'Reference at ${_device.calib.pitch.round()}°, ${_device.calib.roll.round()}°'
-                      : 'Set Reference (${_device.calibCountDown}s)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: primary),
-                ),
+              // Messages
+              const SizedBox(height: 48),
+              Text(connectionStatus, textAlign: TextAlign.center),
+              Text(
+                _device.calibCountDown == 0
+                    ? 'Reference at ${_device.calib.pitch.round()}°, ${_device.calib.roll.round()}°'
+                    : 'Set Reference (${_device.calibCountDown}s)',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: primary),
+              ),
 
-                // Scroll Down
-                const SizedBox(height: 32),
-                Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.center,
-                  child: IconButton(
-                    onPressed: _scrollToggle,
-                    padding: EdgeInsets.zero,
-                    style: ButtonStyle(
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+              // Scroll Down
+              const SizedBox(height: 32),
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                child: IconButton(
+                  onPressed: _scrollToggle,
+                  padding: EdgeInsets.zero,
+                  style: ButtonStyle(
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      backgroundColor: WidgetStatePropertyAll(elevatedColor),
                     ),
-                    icon: ValueListenableBuilder(
-                      valueListenable: _scrolled,
-                      builder:
-                          (_, scrolled, _) => Transform.rotate(
-                            angle: (scrolled ? 90 : -90).toDouble().toRadian(),
-                            child: Icon(Icons.chevron_left),
-                          ),
-                    ),
-                    color: primary,
+                    backgroundColor: WidgetStatePropertyAll(elevatedColor),
                   ),
+                  icon: ValueListenableBuilder(
+                    valueListenable: _scrolled,
+                    builder:
+                        (_, scrolled, _) => Transform.rotate(
+                          angle: (scrolled ? 90 : -90).toDouble().toRadian(),
+                          child: Icon(Icons.chevron_left),
+                        ),
+                  ),
+                  color: primary,
                 ),
+              ),
 
-                // Sliders
-                const SizedBox(height: 48),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'Threshold: ${(_threshold).toStringAsFixed(0)}°',
-                    style: textStyleBold,
-                    textAlign: TextAlign.center,
-                  ),
+              // Sliders
+              const SizedBox(height: 48),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Threshold: ${(_threshold).toStringAsFixed(0)}°',
+                  style: textStyleBold,
+                  textAlign: TextAlign.center,
                 ),
-                Slider(
-                  min: minThreshold,
-                  max: maxThreshold,
-                  value: _threshold,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: px + 12,
-                    vertical: 12,
-                  ),
-                  thumbColor: primary,
-                  activeColor: secondary.withAlpha(70),
-                  inactiveColor: Colors.transparent,
-                  divisions: ((maxThreshold - minThreshold) / 5).toInt(),
-                  onChanged: _updateThreshold,
+              ),
+              Slider(
+                min: minThreshold,
+                max: maxThreshold,
+                value: _threshold,
+                padding: EdgeInsets.symmetric(
+                  horizontal: px + 12,
+                  vertical: 12,
                 ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'Alert Delay: ${_alertDelay}s',
-                    style: textStyleBold,
-                    textAlign: TextAlign.center,
-                  ),
+                thumbColor: primary,
+                activeColor: secondary.withAlpha(70),
+                inactiveColor: Colors.transparent,
+                divisions: ((maxThreshold - minThreshold) / 5).toInt(),
+                onChanged: _updateThreshold,
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Alert Delay: ${_alertDelay}s',
+                  style: textStyleBold,
+                  textAlign: TextAlign.center,
                 ),
-                Slider(
-                  min: 1,
-                  max: 10,
-                  value: _alertDelay.toDouble(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: px + 12,
-                    vertical: 12,
-                  ),
-                  thumbColor: primary,
-                  activeColor: secondary.withAlpha(70),
-                  inactiveColor: Colors.transparent,
-                  divisions: 10,
-                  onChanged: _updateAlertDelay,
+              ),
+              Slider(
+                min: 1,
+                max: 10,
+                value: _alertDelay.toDouble(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: px + 12,
+                  vertical: 12,
                 ),
+                thumbColor: primary,
+                activeColor: secondary.withAlpha(70),
+                inactiveColor: Colors.transparent,
+                divisions: 10,
+                onChanged: _updateAlertDelay,
+              ),
 
-                // Statistics
-                const SizedBox(height: 68),
-                Padding(
+              // Statistics
+              const SizedBox(height: 68),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: px),
+                child: Text(
+                  'Statistics',
+                  style: textStyleBold,
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: statSize,
+                child: ListView.separated(
+                  itemCount: stats.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemBuilder: statBuilder,
                   padding: EdgeInsets.symmetric(horizontal: px),
-                  child: Text(
-                    'Statistics',
-                    style: textStyleBold,
-                    textAlign: TextAlign.left,
-                  ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: statSize,
-                  child: ListView.separated(
-                    itemCount: stats.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 20),
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: statBuilder,
-                    padding: EdgeInsets.symmetric(horizontal: px),
-                  ),
-                ),
+              ),
 
-                const SizedBox(height: 68),
-              ],
-            ),
+              const SizedBox(height: 68),
+            ],
           ),
         ),
       ),
