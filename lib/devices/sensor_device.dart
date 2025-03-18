@@ -9,11 +9,18 @@ const hc05Keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz']; // hc-05
 const resetRefCountDown = 3;
 const calibLerpFactor = 0.33;
 
+enum DeviceType { phone, drcad }
+
 class SensorDevice {
-  SensorDevice({required device, required this.name, this.address})
-    : _device = device;
+  SensorDevice(
+    this._device, {
+    required this.type,
+    required this.name,
+    this.address,
+  });
 
   // props
+  final DeviceType type;
   final dynamic _device;
   final String name;
   final String? address;
@@ -38,20 +45,28 @@ class SensorDevice {
   }
 
   // is
-  bool get isBT => _device is BluetoothDevice;
-  bool get isPhone => _device is PhoneSensors;
+  bool get isPhone => _device is PhoneSensors && type == DeviceType.phone;
+  bool get isDRCAD => _device is BluetoothDevice && type == DeviceType.drcad;
 
   //internal
   Pulse? get _previous => _pulses.lastOrNull;
 
   // methods
 
-  factory SensorDevice.fromBluetoothDevice(BluetoothDevice bt) {
-    return SensorDevice(device: bt, name: bt.name ?? 'BT', address: bt.address);
+  factory SensorDevice.fromBluetoothDevice(
+    BluetoothDevice device,
+    DeviceType type,
+  ) {
+    return SensorDevice(
+      device,
+      type: type,
+      name: device.name ?? 'BT',
+      address: device.address,
+    );
   }
 
   bool get isConnected {
-    if (isBT) {
+    if (isDRCAD) {
       return (_device as BluetoothDevice).isConnected &&
           (_connection?.isConnected ?? false);
     }
@@ -60,7 +75,7 @@ class SensorDevice {
   }
 
   Future<bool> connect() async {
-    if (isBT) {
+    if (isDRCAD) {
       if (isConnected) await disconnect();
       _connection = await BluetoothConnection.toAddress(_device.address);
     }
@@ -69,7 +84,7 @@ class SensorDevice {
   }
 
   Future<void> disconnect() async {
-    if (isBT && isConnected) {
+    if (isDRCAD && isConnected) {
       await _connection!.finish();
     }
 
@@ -79,7 +94,7 @@ class SensorDevice {
   }
 
   Future<bool> begin() async {
-    if (isBT && isConnected) {
+    if (isDRCAD && isConnected) {
       _connection!.output.add(Uint8List.fromList("A".codeUnits));
       await _connection!.output.allSent;
       return true;
@@ -89,7 +104,7 @@ class SensorDevice {
   }
 
   Stream<Pulse>? get input async* {
-    if (isBT && isConnected && _connection!.input != null) {
+    if (isDRCAD && isConnected && _connection!.input != null) {
       await for (Uint8List data in _connection!.input!) {
         final chunk = String.fromCharCodes(data);
         _buffer += chunk;

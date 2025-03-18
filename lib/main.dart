@@ -29,12 +29,16 @@ const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 30.0;
 const defaultAlertDelay = 4; // seconds avg
-const bluetoothDeviceName = "HC-05";
+const drcadDeviceName = "HC-05";
 // spline
 const window = 5; // window window
 const points = 10;
 
-final phoneSensors = SensorDevice(device: PhoneSensors(), name: 'Sensors');
+final phoneSensors = SensorDevice(
+  PhoneSensors(),
+  type: DeviceType.phone,
+  name: 'Phone',
+);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -280,8 +284,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Find HC-05
       for (final device in devices) {
-        if (device.name == bluetoothDeviceName) {
-          _devices.add(SensorDevice.fromBluetoothDevice(device));
+        if (device.name == drcadDeviceName) {
+          _devices.add(
+            SensorDevice.fromBluetoothDevice(device, DeviceType.drcad),
+          );
           setState(() {});
         }
       }
