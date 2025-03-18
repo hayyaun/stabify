@@ -5,34 +5,44 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:virtstab/devices/phone_sensors.dart';
 import 'package:virtstab/pulse.dart';
 
-const setRefCount = 3;
-const keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz']; // hc-05
+const hc05Keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz']; // hc-05
+const resetRefCountDown = 3;
 const calibLerpFactor = 0.33;
 
 class SensorDevice {
-  SensorDevice({required this.device, required this.name, this.address});
+  SensorDevice({required device, required this.name, this.address})
+    : _device = device;
 
-  final dynamic device;
+  // props
+  final dynamic _device;
   final String name;
   final String? address;
-  BluetoothConnection? connection;
-  DateTime? connectedAt;
-
+  BluetoothConnection? _connection;
+  DateTime? _connectedAt;
   // data
   String _buffer = '';
   final List<Pulse> _pulses = [];
-
-  List<Pulse> get pulses => _pulses;
-
   // calibrate
   final _calib = Pulse.zero();
   int _calibCountDown = 0;
 
+  // expose
+  List<Pulse> get pulses => _pulses;
   Pulse get calib => _calib;
   int get calibCountDown => _calibCountDown;
 
-  // previous
-  Pulse? get _previous => _pulses.isEmpty ? null : _pulses.first;
+  String get activeTime {
+    if (_connectedAt == null) return '0\' 0"';
+    final diff = DateTime.now().difference(_connectedAt!);
+    return '${diff.inHours}\' ${diff.inMinutes - diff.inHours * 60}"';
+  }
+
+  // is
+  bool get isBT => _device is BluetoothDevice;
+  bool get isPhone => _device is PhoneSensors;
+
+  //internal
+  Pulse? get _previous => _pulses.lastOrNull;
 
   // methods
 
@@ -40,23 +50,27 @@ class SensorDevice {
     return SensorDevice(device: bt, name: bt.name ?? 'BT', address: bt.address);
   }
 
-  bool get isBT => device is BluetoothDevice;
-  bool get isPhone => device is PhoneSensors;
-
-  Future<bool> connect() async {
+  bool get isConnected {
     if (isBT) {
-      connection = await BluetoothConnection.toAddress(device.address);
-      final connected = connection?.isConnected ?? false;
-      if (connected) connectedAt = DateTime.now();
-      return connected;
+      return (_device as BluetoothDevice).isConnected &&
+          (_connection?.isConnected ?? false);
     }
     if (isPhone) return true;
     return false;
   }
 
+  Future<bool> connect() async {
+    if (isBT) {
+      if (isConnected) await disconnect();
+      _connection = await BluetoothConnection.toAddress(_device.address);
+    }
+    _connectedAt = DateTime.now();
+    return isConnected;
+  }
+
   Future<void> disconnect() async {
     if (isBT && isConnected) {
-      await connection!.finish();
+      await _connection!.finish();
     }
 
     // global
@@ -64,19 +78,10 @@ class SensorDevice {
     _calib.reset();
   }
 
-  bool get isConnected {
-    if (isBT) {
-      return (device as BluetoothDevice).isConnected &&
-          (connection?.isConnected ?? false);
-    }
-    if (isPhone) return true;
-    return false;
-  }
-
   Future<bool> begin() async {
     if (isBT && isConnected) {
-      connection!.output.add(Uint8List.fromList("A".codeUnits));
-      await connection!.output.allSent;
+      _connection!.output.add(Uint8List.fromList("A".codeUnits));
+      await _connection!.output.allSent;
       return true;
     }
     if (isPhone) return true;
@@ -84,11 +89,11 @@ class SensorDevice {
   }
 
   Stream<Pulse>? get input async* {
-    if (isBT && isConnected && connection!.input != null) {
-      await for (Uint8List data in connection!.input!) {
+    if (isBT && isConnected && _connection!.input != null) {
+      await for (Uint8List data in _connection!.input!) {
         final chunk = String.fromCharCodes(data);
         _buffer += chunk;
-        final pulses = parseOutputToPulses();
+        final pulses = __parseHC05OutputToPulses();
         await for (Pulse pulse in pulses) {
           _pulses.add(pulse);
           _calibLerp();
@@ -97,7 +102,7 @@ class SensorDevice {
       }
     }
     if (isPhone && isConnected) {
-      await for (Pulse pulse in (device as PhoneSensors).pulses) {
+      await for (Pulse pulse in (_device as PhoneSensors).pulses) {
         _pulses.add(pulse.copyWith(previous: _previous, delta: _calib));
         _calibLerp(); // calibrate
         yield pulse;
@@ -108,14 +113,14 @@ class SensorDevice {
   // Clib
   void calibrate() {
     if (!isConnected) return;
-    _calibCountDown = setRefCount;
+    _calibCountDown = resetRefCountDown;
   }
 
   void _calibLerp() {
     final pulse = _pulses.lastOrNull;
     if (pulse == null) return;
     if (_calibCountDown == 0) return;
-    if (_calibCountDown == setRefCount) {
+    if (_calibCountDown == resetRefCountDown) {
       _calib.a = pulse.a;
       _calib.g = pulse.g;
     } else {
@@ -127,13 +132,13 @@ class SensorDevice {
   }
 
   /// HC-05 Custom device
-  Stream<Pulse> parseOutputToPulses() async* {
+  Stream<Pulse> __parseHC05OutputToPulses() async* {
     final boxes = _buffer.split('ax:');
     // ignore last one - maybe it's not complete yet
     for (int i = 0; i < boxes.length - 2; i++) {
       // validate integrity of box
       final box = 'ax:${boxes[i]}';
-      final corrupt = keys.any((k) => !box.contains(k));
+      final corrupt = hc05Keys.any((k) => !box.contains(k));
       if (corrupt) continue; // incomplete, let it append later on
       final pulse = Pulse.fromString(box, _previous, _calib);
       _buffer = _buffer.replaceFirst(box, ''); // remove used box

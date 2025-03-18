@@ -72,7 +72,6 @@ class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
   bool _scrolled = false;
   int _alertsCount = 0;
-  DateTime? _connectedAt;
   // config
   double _threshold = defaultThreshold;
   int _alertDelay = defaultAlertDelay;
@@ -88,12 +87,6 @@ class _MyHomePageState extends State<MyHomePage> {
   // getters
 
   bool get connected => _device.isConnected;
-
-  String get activeTime {
-    if (_connectedAt == null) return '0\' 0"';
-    final diff = DateTime.now().difference(_connectedAt!);
-    return '${diff.inHours}\' ${diff.inMinutes - diff.inHours * 60}"';
-  }
 
   List<ChartData> get pulsesData {
     final len = _device.pulses.length;
@@ -262,12 +255,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _connecting = true;
     try {
       // Connect to device
-      if (device == _device) await disconnectActiveDevice();
       if (!await device.connect()) throw 'Cannot conenct';
       if (kDebugMode) print(">> Removing previous device");
       if (device != _device) await disconnectActiveDevice();
       _device = device; // set active device
-      _connectedAt = DateTime.now();
       setState(() {});
 
       // Listen for incoming data
@@ -471,7 +462,7 @@ class _MyHomePageState extends State<MyHomePage> {
       StatBox(
         title: 'Active',
         content: Text(
-          activeTime,
+          _device.activeTime,
           style: TextStyle(
             fontSize: 44,
             fontWeight: FontWeight.w200,
