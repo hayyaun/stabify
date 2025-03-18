@@ -1,4 +1,4 @@
-run: 
+run: icon
 	flutter run
 
 apk: icon

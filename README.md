@@ -20,3 +20,5 @@ samples, guidance on mobile development, and a full API reference.
 - Periodic 10s check = ACK -> Send "1"
 - if change = ACTIVE -> Send "A"
 - after 30 periods = OFF -> Send "0"
+
+set time and threshold and last device to shared prefs

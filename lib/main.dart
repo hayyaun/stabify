@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:virtstab/blue.dart';
 import 'package:virtstab/devices/phone_sensors.dart';
 import 'package:virtstab/devices/sensor_device.dart';
@@ -72,9 +73,10 @@ class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
   bool _scrolled = false;
   int _alertsCount = 0;
-  // config
+  // config - persisted
   double _threshold = defaultThreshold;
   int _alertDelay = defaultAlertDelay;
+  String? _lastDeviceAddress;
   // device
   final List<SensorDevice> _devices = [];
   SensorDevice _device = phoneSensors;
@@ -127,19 +129,58 @@ class _MyHomePageState extends State<MyHomePage> {
   Color get secondary => Theme.of(context).colorScheme.secondary;
   Color get elevatedColor => secondary.withAlpha(25);
 
+  // prefs
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    _threshold = prefs.getDouble('threshold') ?? defaultThreshold;
+    _alertDelay = prefs.getInt('alertDelay') ?? defaultAlertDelay;
+    _lastDeviceAddress = prefs.getString('lastDeviceAddress');
+    if (kDebugMode) {
+      print(
+        'prefs: threshold:$_threshold alertDelay:$_alertDelay lastDeviceAddress:$_lastDeviceAddress',
+      );
+    }
+    setState(() {});
+  }
+
+  Future<void> _updateThreshold(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    _threshold = value;
+    await prefs.setDouble('threshold', _threshold);
+    setState(() {});
+  }
+
+  Future<void> _updateAlertDelay(int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    _alertDelay = value;
+    await prefs.setInt('alertDelay', _alertDelay);
+    setState(() {});
+  }
+
+  Future<void> _updateDevice(SensorDevice value) async {
+    final prefs = await SharedPreferences.getInstance();
+    _device = value;
+    if (value.address?.isNotEmpty ?? false) {
+      await prefs.setString('lastDeviceAddress', value.address!);
+    }
+    setState(() {});
+  }
+
   // overrides
 
   @override
   void initState() {
-    scanAndConnect();
+    _loadPrefs().then((_) {
+      _onInitScanAndConnect(); // sets _device
+    });
     _scrollController.addListener(scrollListener);
-    connectToDevice(_device); // no await - default sensors
     super.initState();
   }
 
   @override
   void dispose() async {
-    await disconnectActiveDevice();
+    await _device.disconnect();
     _scrollController.removeListener(scrollListener);
     _scrollController.dispose();
     super.dispose();
@@ -204,13 +245,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Device
 
-  Future<void> scanAndConnect() async {
+  Future<void> _onInitScanAndConnect() async {
     _scanning.value = true;
     setState(() {});
     // look for bluetooth devices
     await scanDevices();
-    if (_devices.length > 1) {
-      await connectToDevice(_devices[1]);
+    // connect to last device connected
+    final lastDevice =
+        _devices.where((d) => d.address == _lastDeviceAddress).firstOrNull;
+    if (lastDevice != null) {
+      await connectToDevice(lastDevice);
+    } else {
+      await connectToDevice(_device);
     }
     _scanning.value = false;
     setState(() {});
@@ -245,25 +291,19 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> disconnectActiveDevice() async {
-    await _device.disconnect(); // clear device data
-    if (kDebugMode) print(">> Disconnected.");
-    setState(() {});
-  }
-
   Future<void> connectToDevice(SensorDevice device) async {
     _connecting = true;
     try {
       // Connect to device
       if (!await device.connect()) throw 'Cannot conenct';
       if (kDebugMode) print(">> Removing previous device");
-      if (device != _device) await disconnectActiveDevice();
-      _device = device; // set active device
+      if (device != _device) await _device.disconnect();
+      _updateDevice(device); // set active device
       setState(() {});
 
       // Listen for incoming data
       device.input?.listen((Pulse data) {
-        if (kDebugMode) print('chunk: $data');
+        // if (kDebugMode) print('>> chunk: $data');
         setState(() {}); // ensure data is up to date to user
         checkAngleAlert(); // play alert
       });
@@ -364,9 +404,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   thumbColor: primary,
                   activeColor: secondary.withAlpha(70),
                   inactiveColor: Colors.transparent,
-                  divisions: 5,
+                  divisions: ((maxThreshold - minThreshold) / 5).toInt(),
                   onChanged: (v) {
-                    _threshold = v;
+                    _updateThreshold(v);
                     setState(() {});
                   },
                 ),
@@ -392,7 +432,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   inactiveColor: Colors.transparent,
                   divisions: 10,
                   onChanged: (v) {
-                    _alertDelay = v.toInt();
+                    _updateAlertDelay(v.toInt());
                     setState(() {});
                   },
                 ),
@@ -496,7 +536,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Text(item.name),
       onPressed: () async {
         Navigator.pop(context);
-        _device = item;
+        _updateDevice(item);
         await connectToDevice(item);
         setState(() {});
       },
