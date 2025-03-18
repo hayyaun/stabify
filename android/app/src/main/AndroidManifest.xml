@@ -15,7 +15,7 @@
   <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
   <application
-    android:label="VirtStab"
+    android:label="Stabify"
     android:name="${applicationName}"
     android:icon="@mipmap/launcher_icon"
   >

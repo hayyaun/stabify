@@ -1,4 +1,4 @@
-# virtstab
+# stabify
 
 A new Flutter project.
 

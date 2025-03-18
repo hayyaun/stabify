@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:virtstab/styles.dart';
+import 'package:stabify/styles.dart';
 
 class StatBox extends StatelessWidget {
   final String title;

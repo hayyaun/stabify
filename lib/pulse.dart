@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:virtstab/vec3.dart';
+import 'package:stabify/vec3.dart';
 
 const alpha = 0.01;
 const accelS9y = 16384.0; // 2g

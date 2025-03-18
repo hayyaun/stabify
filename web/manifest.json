@@ -1,6 +1,6 @@
 {
-    "name": "virtstab",
-    "short_name": "virtstab",
+    "name": "stabify",
+    "short_name": "stabify",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#hexcode",

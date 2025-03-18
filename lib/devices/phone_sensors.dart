@@ -1,8 +1,8 @@
 import 'package:async/async.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:virtstab/pulse.dart';
-import 'package:virtstab/vec3.dart';
+import 'package:stabify/pulse.dart';
+import 'package:stabify/vec3.dart';
 
 class PhoneSensors {
   PhoneSensors();

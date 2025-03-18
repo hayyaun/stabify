@@ -5,16 +5,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:virtstab/blue.dart';
-import 'package:virtstab/devices/phone_sensors.dart';
-import 'package:virtstab/devices/sensor_device.dart';
-import 'package:virtstab/pulse.dart';
-import 'package:virtstab/styles.dart';
-import 'package:virtstab/utils.dart';
-import 'package:virtstab/widgets/gauge.dart';
-import 'package:virtstab/widgets/gradient_mask.dart';
-import 'package:virtstab/widgets/spline.dart';
-import 'package:virtstab/widgets/stat_box.dart';
+import 'package:stabify/blue.dart';
+import 'package:stabify/devices/phone_sensors.dart';
+import 'package:stabify/devices/sensor_device.dart';
+import 'package:stabify/pulse.dart';
+import 'package:stabify/styles.dart';
+import 'package:stabify/utils.dart';
+import 'package:stabify/widgets/gauge.dart';
+import 'package:stabify/widgets/gradient_mask.dart';
+import 'package:stabify/widgets/spline.dart';
+import 'package:stabify/widgets/stat_box.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,6 +25,7 @@ const px = 48.0;
 const statSize = 128.0;
 const scrollDuration = Duration(milliseconds: 500);
 // config
+const appName = 'Stabify';
 const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 30.0;
@@ -47,7 +48,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'VirtStab',
+      title: appName,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
       ),
@@ -58,7 +59,7 @@ class MyApp extends StatelessWidget {
         ).copyWith(surface: Colors.black),
       ),
       themeMode: ThemeMode.dark,
-      home: const MyHomePage(title: 'VirtStab'),
+      home: const MyHomePage(title: appName),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -345,7 +346,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   top: true,
                   child: GradientMask(
                     Text(
-                      '.:: VIRTSTAB ::.',
+                      '.:: ${appName.toUpperCase()} ::.',
                       style: TextStyle(fontSize: 24, letterSpacing: 8),
                       textAlign: TextAlign.center,
                     ),

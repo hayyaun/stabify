@@ -1,4 +1,4 @@
-package ir.drcad.virtstab
+package ir.drcad.stabify
 
 import io.flutter.embedding.android.FlutterActivity
 

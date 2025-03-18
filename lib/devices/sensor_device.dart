@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
-import 'package:virtstab/devices/phone_sensors.dart';
-import 'package:virtstab/pulse.dart';
+import 'package:stabify/devices/phone_sensors.dart';
+import 'package:stabify/pulse.dart';
 
 const hc05Keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz']; // hc-05
 const resetRefCountDown = 3;
