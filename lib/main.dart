@@ -304,7 +304,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!await device.connect()) throw 'Cannot conenct';
       if (kDebugMode) print(">> Removing previous device");
       if (device != _device) await _device.disconnect();
-      _updateDevice(device); // set active device
+      await _updateDevice(device); // set active device
       setState(() {});
 
       // Listen for incoming data
@@ -551,7 +551,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Text(item.name),
       onPressed: () async {
         Navigator.pop(context);
-        _updateDevice(item);
+        await _updateDevice(item);
         await connectToDevice(item);
         setState(() {});
       },

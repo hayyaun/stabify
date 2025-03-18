@@ -7,7 +7,7 @@ apk: icon
 apk-clean: clean pub icon
 	flutter build apk --split-per-abi
 
-linux: clean pub icon
+linux: icon
 	flutter build linux --release
 
 icon:
