@@ -105,3 +105,12 @@ class Pulse {
     _delta?.reset();
   }
 }
+
+extension PulseMethods on List<Pulse> {
+  double get anglesRange {
+    final angles = map((p) => p.angle);
+    final minValue = angles.reduce((a, b) => a < b ? a : b);
+    final maxValue = angles.reduce((a, b) => a > b ? a : b);
+    return maxValue - minValue;
+  }
+}

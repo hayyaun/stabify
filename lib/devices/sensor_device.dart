@@ -143,7 +143,7 @@ class SensorDevice {
       await for (Uint8List data in _connection!.input!) {
         final chunk = String.fromCharCodes(data);
         _buffer += chunk;
-        final pulses = _parseHC05OutputToPulses();
+        final pulses = _parseOutputToPulsesDRCAD();
         await for (Pulse pulse in pulses) {
           _pulses.add(pulse);
           _calibLerp();
@@ -163,7 +163,7 @@ class SensorDevice {
   }
 
   /// HC-05 Custom device
-  Stream<Pulse> _parseHC05OutputToPulses() async* {
+  Stream<Pulse> _parseOutputToPulsesDRCAD() async* {
     final boxes = _buffer.split('ax:');
     // ignore last one - maybe it's not complete yet
     for (int i = 0; i < boxes.length - 2; i++) {
@@ -182,12 +182,8 @@ class SensorDevice {
   void _checkIdle() async {
     if (state != DeviceState.auto) return; // only in auto mode
     if (_pulses.length < idleSeconds) return;
-    final angles = _pulses
-        .sublist(_pulses.length - idleSeconds)
-        .map((p) => p.angle);
-    final minValue = angles.reduce((a, b) => a < b ? a : b);
-    final maxValue = angles.reduce((a, b) => a > b ? a : b);
-    if (maxValue - minValue > telorance) return; // moving! not idle
+    final range = _pulses.sublist(_pulses.length - idleSeconds).anglesRange;
+    if (range > telorance) return; // moving! not idle
 
     // turn on idle mode
     if (isDRCAD && isConnected) {
@@ -229,10 +225,8 @@ class SensorDevice {
       final items = _pulses.sublist(
         _pulses.length - keepAliveTries,
       ); // check the ack (idle) pulses only
-      final angles = items.map((p) => p.angle);
-      final minValue = angles.reduce((a, b) => a < b ? a : b);
-      final maxValue = angles.reduce((a, b) => a > b ? a : b);
-      if (maxValue - minValue < telorance) return; // not moving! can't wake up
+      final range = items.anglesRange;
+      if (range < telorance) return; // not moving! can't wake up
       // Moving! wake up
       await begin();
     }
