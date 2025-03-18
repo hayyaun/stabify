@@ -11,8 +11,8 @@ import 'package:virtstab/devices/sensor_device.dart';
 import 'package:virtstab/pulse.dart';
 import 'package:virtstab/styles.dart';
 import 'package:virtstab/utils.dart';
-import 'package:virtstab/widgets/app_title.dart';
 import 'package:virtstab/widgets/gauge.dart';
+import 'package:virtstab/widgets/gradient_mask.dart';
 import 'package:virtstab/widgets/spline.dart';
 import 'package:virtstab/widgets/stat_box.dart';
 
@@ -335,7 +335,16 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 // Title
                 const SizedBox(height: 12),
-                SafeArea(top: true, child: AppTitle()),
+                SafeArea(
+                  top: true,
+                  child: GradientMask(
+                    Text(
+                      '.:: VIRTSTAB ::.',
+                      style: TextStyle(fontSize: 24, letterSpacing: 8),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
 
                 // Guage
                 const SizedBox(height: 12),
