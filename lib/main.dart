@@ -76,8 +76,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
-  bool _scrolled = false;
-  int _alertsCount = 0;
+  final _scrolled = ValueNotifier(false);
+  final _alertsCount = ValueNotifier(0);
   // config - persisted
   double _threshold = defaultThreshold;
   int _alertDelay = defaultAlertDelay;
@@ -86,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<SensorDevice> _devices = [];
   SensorDevice _device = phoneSensors;
   final _scanning = ValueNotifier(false);
-  bool _connecting = false;
+  final _connecting = ValueNotifier(false);
   // audio
   final _player = AudioPlayer();
   bool _muted = false;
@@ -114,14 +114,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String get connectionState =>
-      _connecting
+      _connecting.value
           ? 'connecting'
           : connected
           ? 'connected'
           : 'disconnected';
 
   String get connectionStatus {
-    if (_connecting) {
+    if (_connecting.value) {
       return "Connecting to ${_device.name}...";
     } else if (connected) {
       return "Connected to ${_device.name}!";
@@ -156,9 +156,9 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
-  Future<void> _updateAlertDelay(int value) async {
+  Future<void> _updateAlertDelay(double value) async {
     final prefs = await SharedPreferences.getInstance();
-    _alertDelay = value;
+    _alertDelay = value.toInt();
     await prefs.setInt('alertDelay', _alertDelay);
     setState(() {});
   }
@@ -195,17 +195,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void scrollListener() {
     final max = _scrollController.position.maxScrollExtent;
-    if (_scrollController.offset == max && !_scrolled) {
-      _scrolled = true;
-      setState(() {});
-    } else if (_scrollController.offset == 0 && _scrolled) {
-      _scrolled = false;
-      setState(() {});
+    if (_scrollController.offset == max && !_scrolled.value) {
+      _scrolled.value = true;
+    } else if (_scrollController.offset == 0 && _scrolled.value) {
+      _scrolled.value = false;
     }
   }
 
   Future<void> _scrollToggle() async {
-    if (_scrolled) {
+    if (_scrolled.value) {
       await _scrollToTop();
     } else {
       await _scrollToBottom();
@@ -242,8 +240,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final avgAngle = total / _alertDelay;
     if (avgAngle < _threshold) return;
     if (_player.state == PlayerState.completed) {
-      _alertsCount++;
-      setState(() {});
+      _alertsCount.value++;
     }
     await _player.play(AssetSource('alert.mp3'));
   }
@@ -252,7 +249,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _onInitScanAndConnect() async {
     _scanning.value = true;
-    setState(() {});
     // look for bluetooth devices
     await scanDevices();
     // connect to last device connected
@@ -264,7 +260,6 @@ class _MyHomePageState extends State<MyHomePage> {
       await connectToDevice(_device);
     }
     _scanning.value = false;
-    setState(() {});
   }
 
   Future<void> scanDevices() async {
@@ -299,14 +294,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> connectToDevice(SensorDevice device) async {
-    _connecting = true;
+    _connecting.value = true;
     try {
       // Connect to device
       if (!await device.connect()) throw 'Cannot conenct';
       if (kDebugMode) print(">> Removing previous device");
       if (device != _device) await _device.disconnect();
       await _updateDevice(device); // set active device
-      setState(() {});
 
       // Listen for incoming data
       device.input?.listen((Pulse data) {
@@ -320,10 +314,8 @@ class _MyHomePageState extends State<MyHomePage> {
       if (kDebugMode) print(">> Ack sent!");
     } catch (err) {
       if (kDebugMode) print('>> connect: $err');
-      setState(() {});
     }
-    _connecting = false;
-    setState(() {});
+    _connecting.value = false;
   }
 
   @override
@@ -391,9 +383,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       backgroundColor: WidgetStatePropertyAll(elevatedColor),
                     ),
-                    icon: Transform.rotate(
-                      angle: (_scrolled ? 90 : -90).toDouble().toRadian(),
-                      child: Icon(Icons.chevron_left),
+                    icon: ValueListenableBuilder(
+                      valueListenable: _scrolled,
+                      builder:
+                          (_, scrolled, _) => Transform.rotate(
+                            angle: (scrolled ? 90 : -90).toDouble().toRadian(),
+                            child: Icon(Icons.chevron_left),
+                          ),
                     ),
                     color: primary,
                   ),
@@ -421,10 +417,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   activeColor: secondary.withAlpha(70),
                   inactiveColor: Colors.transparent,
                   divisions: ((maxThreshold - minThreshold) / 5).toInt(),
-                  onChanged: (v) {
-                    _updateThreshold(v);
-                    setState(() {});
-                  },
+                  onChanged: _updateThreshold,
                 ),
                 const SizedBox(height: 8),
                 Padding(
@@ -447,10 +440,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   activeColor: secondary.withAlpha(70),
                   inactiveColor: Colors.transparent,
                   divisions: 10,
-                  onChanged: (v) {
-                    _updateAlertDelay(v.toInt());
-                    setState(() {});
-                  },
+                  onChanged: _updateAlertDelay,
                 ),
 
                 // Statistics
@@ -505,13 +495,17 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       StatBox(
         title: 'Alerts',
-        content: Text(
-          '$_alertsCount',
-          style: TextStyle(
-            fontSize: 58,
-            fontWeight: FontWeight.w200,
-            color: primary,
-          ),
+        content: ValueListenableBuilder(
+          valueListenable: _alertsCount,
+          builder:
+              (_, alertCount, _) => Text(
+                '$alertCount',
+                style: TextStyle(
+                  fontSize: 58,
+                  fontWeight: FontWeight.w200,
+                  color: primary,
+                ),
+              ),
         ),
         caption: 'times',
       ),
@@ -567,7 +561,7 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext context) {
         return ValueListenableBuilder(
           valueListenable: _scanning,
-          builder: (context, value, child) {
+          builder: (_, value, _) {
             return SimpleDialog(
               title: Text('Select a device'),
               children: _devices.map(selectDialogItem).toList(),
@@ -609,11 +603,15 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: Icon(Icons.adjust, size: 22),
             onPressed: _device.calibrate,
           ),
-          IconButton(
-            icon: Icon(Icons.bluetooth_rounded, size: 22),
-            onPressed:
-                () => connectToDevice(_device), // connect selected device
-            color: _connecting ? primary : null,
+          ValueListenableBuilder(
+            valueListenable: _connecting,
+            builder:
+                (_, connecting, _) => IconButton(
+                  icon: Icon(Icons.bluetooth_rounded, size: 22),
+                  onPressed:
+                      () => connectToDevice(_device), // connect selected device
+                  color: connecting ? primary : null,
+                ),
           ),
         ],
       ),
