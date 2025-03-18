@@ -9,14 +9,20 @@ const gyroS9y = 131.0; // 250deg/s
 
 class Pulse {
   Vec3 a, g;
+  DateTime date;
   Pulse? _previous, _delta;
 
-  Pulse({required this.a, required this.g, Pulse? previous, Pulse? delta})
-    : _previous = previous,
-      _delta = delta;
+  Pulse({
+    required this.a,
+    required this.g,
+    required this.date,
+    Pulse? previous,
+    Pulse? delta,
+  }) : _previous = previous,
+       _delta = delta;
 
   factory Pulse.zero() {
-    return Pulse(a: Vec3.zero(), g: Vec3.zero());
+    return Pulse(a: Vec3.zero(), g: Vec3.zero(), date: DateTime.now());
   }
 
   factory Pulse.fromString(String input, Pulse? previous, Pulse? delta) {
@@ -48,7 +54,13 @@ class Pulse {
     } catch (err) {
       if (kDebugMode) print('>> pulse fromString: $a $g $err');
     }
-    return Pulse(a: a, g: g, previous: previous, delta: delta);
+    return Pulse(
+      a: a,
+      g: g,
+      previous: previous,
+      delta: delta,
+      date: DateTime.now(),
+    );
   }
 
   Vec3 get aNorm => a / accelS9y;
@@ -69,10 +81,12 @@ class Pulse {
 
   double get angle => max(pitch.abs(), roll.abs());
 
-  Pulse operator +(Pulse other) => Pulse(a: a + other.a, g: a + other.g);
-  Pulse operator -(Pulse other) => Pulse(a: a - other.a, g: a - other.g);
-  Pulse operator *(double n) => Pulse(a: a * n, g: a * n);
-  Pulse operator /(double n) => Pulse(a: a / n, g: a / n);
+  Pulse operator +(Pulse other) =>
+      Pulse(a: a + other.a, g: a + other.g, date: other.date);
+  Pulse operator -(Pulse other) =>
+      Pulse(a: a - other.a, g: a - other.g, date: other.date);
+  Pulse operator *(double n) => Pulse(a: a * n, g: a * n, date: date);
+  Pulse operator /(double n) => Pulse(a: a / n, g: a / n, date: date);
 
   Pulse lerp(Pulse other, double t) => this * (1 - t) + other * t;
 
@@ -80,8 +94,8 @@ class Pulse {
   String toString() =>
       'Pulse(pitch: ${pitch.toStringAsFixed(2)}, roll: ${roll.toStringAsFixed(2)})';
 
-  Pulse copyWith({Pulse? previous, Pulse? delta}) {
-    return Pulse(a: a, g: g, delta: delta, previous: previous);
+  Pulse copyWith({required Pulse? previous, required Pulse? delta}) {
+    return Pulse(a: a, g: g, delta: delta, previous: previous, date: date);
   }
 
   void reset() {

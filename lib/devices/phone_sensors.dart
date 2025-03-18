@@ -19,7 +19,11 @@ class PhoneSensors {
         .map((events) {
           final a = events[0] as AccelerometerEvent;
           final g = events[1] as GyroscopeEvent;
-          return Pulse(a: Vec3(a.x, a.y, a.z), g: Vec3(g.x, g.y, g.z));
+          return Pulse(
+            a: Vec3(a.x, a.y, a.z),
+            g: Vec3(g.x, g.y, g.z),
+            date: DateTime.now(),
+          );
         })
         .throttleTime(Duration(seconds: 1));
   }

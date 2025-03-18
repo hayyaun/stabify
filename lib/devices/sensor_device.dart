@@ -8,14 +8,21 @@ import 'package:stabify/pulse.dart';
 const hc05Keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz']; // hc-05
 const resetRefCountDown = 3;
 const calibLerpFactor = 0.33;
+const defaultTelorance = 2.0; // (-1,+1)
+const idleSeconds = 60;
+const idleAckPeriod = 10;
+const keepAliveMaxTry = 30; // 30 * 10 seconds
 
 enum DeviceType { phone, drcad }
+
+enum DeviceState { auto, idle, off }
 
 class SensorDevice {
   SensorDevice(
     this._device, {
     required this.type,
     required this.name,
+    this.telorance = defaultTelorance,
     this.address,
   });
 
@@ -24,6 +31,7 @@ class SensorDevice {
   final dynamic _device;
   final String name;
   final String? address;
+  final double telorance;
   BluetoothConnection? _connection;
   DateTime? _connectedAt;
   // data
@@ -32,6 +40,10 @@ class SensorDevice {
   // calibrate
   final _calib = Pulse.zero();
   int _calibCountDown = 0;
+  // state
+  DeviceState state = DeviceState.auto;
+  int turnOffCDEnabled = 0;
+  int keepAliveTries = 0;
 
   // expose
   List<Pulse> get pulses => _pulses;
@@ -93,38 +105,6 @@ class SensorDevice {
     _calib.reset();
   }
 
-  Future<bool> begin() async {
-    if (isDRCAD && isConnected) {
-      _connection!.output.add(Uint8List.fromList("A".codeUnits));
-      await _connection!.output.allSent;
-      return true;
-    }
-    if (isPhone) return true;
-    return false;
-  }
-
-  Stream<Pulse>? get input async* {
-    if (isDRCAD && isConnected && _connection!.input != null) {
-      await for (Uint8List data in _connection!.input!) {
-        final chunk = String.fromCharCodes(data);
-        _buffer += chunk;
-        final pulses = __parseHC05OutputToPulses();
-        await for (Pulse pulse in pulses) {
-          _pulses.add(pulse);
-          _calibLerp();
-          yield pulse;
-        }
-      }
-    }
-    if (isPhone && isConnected) {
-      await for (Pulse pulse in (_device as PhoneSensors).pulses) {
-        _pulses.add(pulse.copyWith(previous: _previous, delta: _calib));
-        _calibLerp(); // calibrate
-        yield pulse;
-      }
-    }
-  }
-
   // Clib
   void calibrate() {
     if (!isConnected) return;
@@ -146,8 +126,44 @@ class SensorDevice {
     _calibCountDown -= 1;
   }
 
+  // Data
+  Future<bool> begin() async {
+    if (isDRCAD && isConnected) {
+      _connection!.output.add(Uint8List.fromList("A".codeUnits));
+      await _connection!.output.allSent;
+      state = DeviceState.auto; // !!!!!!! AUTO
+      return true;
+    }
+    if (isPhone) return true;
+    return false;
+  }
+
+  Stream<Pulse>? get input async* {
+    if (isDRCAD && isConnected && _connection!.input != null) {
+      await for (Uint8List data in _connection!.input!) {
+        final chunk = String.fromCharCodes(data);
+        _buffer += chunk;
+        final pulses = _parseHC05OutputToPulses();
+        await for (Pulse pulse in pulses) {
+          _pulses.add(pulse);
+          _calibLerp();
+          _checkIdle();
+          _checkOffOrWake();
+          yield pulse;
+        }
+      }
+    }
+    if (isPhone && isConnected) {
+      await for (Pulse pulse in (_device as PhoneSensors).pulses) {
+        _pulses.add(pulse.copyWith(previous: _previous, delta: _calib));
+        _calibLerp(); // calibrate
+        yield pulse;
+      }
+    }
+  }
+
   /// HC-05 Custom device
-  Stream<Pulse> __parseHC05OutputToPulses() async* {
+  Stream<Pulse> _parseHC05OutputToPulses() async* {
     final boxes = _buffer.split('ax:');
     // ignore last one - maybe it's not complete yet
     for (int i = 0; i < boxes.length - 2; i++) {
@@ -158,6 +174,67 @@ class SensorDevice {
       final pulse = Pulse.fromString(box, _previous, _calib);
       _buffer = _buffer.replaceFirst(box, ''); // remove used box
       yield pulse;
+    }
+  }
+
+  // Idle (after 60s telorance) -> Stop
+  // This method only changes state of device to IDLE mode (virtually and physically)
+  void _checkIdle() async {
+    if (state != DeviceState.auto) return; // only in auto mode
+    if (_pulses.length < idleSeconds) return;
+    final angles = _pulses
+        .sublist(_pulses.length - idleSeconds)
+        .map((p) => p.angle);
+    final minValue = angles.reduce((a, b) => a < b ? a : b);
+    final maxValue = angles.reduce((a, b) => a > b ? a : b);
+    if (maxValue - minValue > telorance) return; // moving! not idle
+
+    // turn on idle mode
+    if (isDRCAD && isConnected) {
+      _connection!.output.add(Uint8List.fromList("S".codeUnits));
+      await _connection!.output.allSent;
+
+      state = DeviceState.idle; // !!!!!!! IDLE
+
+      /// Send '1' every 10s
+      Timer.periodic(Duration(seconds: idleAckPeriod), (t) async {
+        if (state != DeviceState.idle) t.cancel();
+        _connection!.output.add(Uint8List.fromList("1".codeUnits));
+        await _connection!.output.allSent;
+      });
+
+      return;
+    }
+  }
+
+  // Ack (periodic 10s) -> Wake (auto) / Off (after 30 periods)
+  // This method only changes state of device to AUTO/OFF mode (virtually and physically)
+  void _checkOffOrWake() async {
+    if (state != DeviceState.idle) return; // only in idle mode
+
+    if (isDRCAD && isConnected) {
+      /// max-age: if no changes after 30 periods -> OFF
+      keepAliveTries++;
+      if (keepAliveTries > keepAliveMaxTry) {
+        _connection!.output.add(Uint8List.fromList("0".codeUnits));
+        await _connection!.output.allSent;
+        state = DeviceState.off; // !!!!!!! OFF
+        // maybe disconnect?
+        keepAliveTries = 0;
+        return;
+      }
+
+      /// if any change based on telorance -> Wake = AUTO
+      if (_pulses.length < keepAliveTries) return;
+      final items = _pulses.sublist(
+        _pulses.length - keepAliveTries,
+      ); // check the ack (idle) pulses only
+      final angles = items.map((p) => p.angle);
+      final minValue = angles.reduce((a, b) => a < b ? a : b);
+      final maxValue = angles.reduce((a, b) => a > b ? a : b);
+      if (maxValue - minValue < telorance) return; // not moving! can't wake up
+      // Moving! wake up
+      await begin();
     }
   }
 }
