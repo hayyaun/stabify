@@ -1,6 +1,6 @@
 # Stabify
 
-A new Flutter project.
+Virtual Stablizer for Drcad Devices.
 
 ## Sensor Device Behavior
 
