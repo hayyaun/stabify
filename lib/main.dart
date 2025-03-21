@@ -540,6 +540,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Text(item.name),
       onPressed: () async {
         Navigator.pop(context);
+        _scrollToTop();
         await _updateDevice(item);
         await connectToDevice(item);
         setState(() {});
@@ -548,7 +549,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void openSelectionDialog() async {
-    scanDevices();
+    scanDevices(); // parallel
     if (!mounted) return;
     showDialog(
       context: context,

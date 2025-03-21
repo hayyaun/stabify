@@ -84,8 +84,8 @@ abstract class SensorDevice {
     // FIXME Replace with a proper tick method later
     // the new devices might not send pulse each second!!!
     _calibLerp();
-    checkIdle();
-    checkOffOrWake();
+    checkIdle(); // varies
+    checkOffOrWake(); // varies
   }
 
   Stream<Pulse>? get input async* {}
