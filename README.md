@@ -4,11 +4,13 @@ Virtual Stablizer for Drcad Devices.
 
 ## Sensor Device Behavior
 
-- [x] init connect = ACTIVE -> Send "A"
-- [x] if epsilon change in 60 last pulses = IDLE -> Send "S"
-- [x] Periodic 10s check = ACK -> Send "1"
-- [x] if change = ACTIVE -> Send "A"
-- [x] after 30 periods = OFF -> Send "0"
+- [x] init connect = ACTIVE
+- [x] if epsilon change in 60 last pulses = IDLE
+- [x] Periodic 10s check = ACK
+- [x] if change = ACTIVE
+- [x] after 30 periods = OFF
+
+Drcad Device: ACTIVE `A` / IDLE `S` / ACK `1` / OFF `0`
 
 ## ADB WSL Issue Fix
 
