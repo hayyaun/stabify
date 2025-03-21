@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stabify/blue.dart';
+import 'package:stabify/devices/drcad_device.dart';
 import 'package:stabify/devices/phone_sensors.dart';
 import 'package:stabify/devices/sensor_device.dart';
 import 'package:stabify/pulse.dart';
@@ -31,16 +32,11 @@ const minThreshold = 10.0;
 const maxThreshold = 60.0;
 const defaultThreshold = 30.0;
 const defaultAlertDelay = 4; // seconds avg
-const drcadDeviceName = "HC-05";
 // spline
 const window = 5; // window window
 const points = 10;
 
-final phoneSensors = SensorDevice(
-  PhoneSensors(),
-  type: DeviceType.phone,
-  name: 'Phone',
-);
+final phoneSensors = PhoneSensors(name: 'Phone');
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -279,12 +275,10 @@ class _MyHomePageState extends State<MyHomePage> {
       // Get a list of paired devices
       final devices = await FlutterBluetoothSerial.instance.getBondedDevices();
 
-      // Find HC-05
+      // Find and relate devices to their class
       for (final device in devices) {
-        if (device.name == drcadDeviceName) {
-          _devices.add(
-            SensorDevice.fromBluetoothDevice(device, DeviceType.drcad),
-          );
+        if (device.name == DrcadDevice.deviceName) {
+          _devices.add(DrcadDevice.fromBluetoothDevice(device));
         }
       }
     } catch (err) {

@@ -1,13 +1,17 @@
 import 'package:async/async.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:stabify/devices/sensor_device.dart';
 import 'package:stabify/pulse.dart';
 import 'package:stabify/vec3.dart';
 
-class PhoneSensors {
-  PhoneSensors();
+class PhoneSensors extends SensorDevice {
+  PhoneSensors({required super.name, super.telorance});
 
-  Stream<Pulse> get pulses {
+  @override
+  bool get isConnected => true;
+
+  Stream<Pulse> get inputRaw {
     final gyroStream = gyroscopeEventStream(
       samplingPeriod: Duration(milliseconds: 100),
     );
@@ -26,5 +30,15 @@ class PhoneSensors {
           );
         })
         .throttleTime(Duration(seconds: 1));
+  }
+
+  @override
+  Stream<Pulse>? get input async* {
+    if (!isConnected) return;
+    await for (Pulse pulse in inputRaw) {
+      pulses.add(pulse.copyWith(previous: previous, delta: calib));
+      onPulseTick();
+      yield pulse;
+    }
   }
 }
