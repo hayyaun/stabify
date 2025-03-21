@@ -5,10 +5,10 @@ Virtual Stablizer for Drcad Devices.
 ## Sensor Device Behavior
 
 - [x] init connect = ACTIVE
-- [x] if epsilon change in 60 last pulses = IDLE
-- [x] Periodic 10s check = ACK
-- [x] if change = ACTIVE
-- [x] after 30 periods = OFF
+  - [x] ACTIVE: if `60 last pulses avg` change < epsilon = IDLE
+- [x] IDLE: Periodic 10s check = ACK
+  - [x] if `30 last pulses avg` change > epsilon = ACTIVE
+  - [x] if `30+ pulses` received without waking up = OFF
 
 Drcad Device: ACTIVE `A` / IDLE `S` / ACK `1` / OFF `0`
 
