@@ -6,9 +6,19 @@ import 'package:stabify/devices/sensor_device.dart';
 import 'package:stabify/pulse.dart';
 
 class DrcadDevice extends SensorDevice {
-  // TODO we'll use factory name later
-  static const deviceName = "HC-05"; // used for detection
+  // used for detection
+  static const deviceName = "HC-05";
+  static const factoryName = "DRCADv1";
+  // Shenzhen Ogemray Technology (HC-05, HC-06)
+  static const manMAC = "58:56:00";
+
+  // index 0 is used for box check
   static const _keys = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
+
+  static bool isValidDevice(BluetoothDevice device) {
+    if (!device.address.startsWith(manMAC)) return false;
+    return device.name == deviceName;
+  }
 
   DrcadDevice(
     this._device, {
@@ -17,18 +27,15 @@ class DrcadDevice extends SensorDevice {
     super.address,
   });
 
-  // props
   BluetoothConnection? _connection;
   BluetoothDevice _device;
-  // data
   String _buffer = '';
 
-  // methods
-
   factory DrcadDevice.fromBluetoothDevice(BluetoothDevice device) {
+    if (!isValidDevice(device)) throw "Wrong $factoryName Device!";
     return DrcadDevice(
       device,
-      name: device.name ?? 'BT',
+      name: device.name ?? factoryName,
       address: device.address,
     );
   }
@@ -75,11 +82,11 @@ class DrcadDevice extends SensorDevice {
   }
 
   Stream<Pulse> _parseOutputToPulsesDRCAD() async* {
-    final boxes = _buffer.split('ax:');
+    final boxes = _buffer.split('${_keys[0]}:');
     // ignore last one - maybe it's not complete yet
     for (int i = 0; i < boxes.length - 2; i++) {
       // validate integrity of box
-      final box = 'ax:${boxes[i]}';
+      final box = '${_keys[0]}:${boxes[i]}';
       final corrupt = _keys.any((k) => !box.contains(k));
       if (corrupt) continue; // incomplete, let it append later on
       final pulse = Pulse.fromString(box, previous, calib);

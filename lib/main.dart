@@ -277,7 +277,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // Find and relate devices to their class
       for (final device in devices) {
-        if (device.name == DrcadDevice.deviceName) {
+        if (DrcadDevice.isValidDevice(device)) {
           _devices.add(DrcadDevice.fromBluetoothDevice(device));
         }
       }

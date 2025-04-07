@@ -17,3 +17,8 @@ Virtual Stablizer for DrCAD Devices.
 1. Phone: Revoke - Connect USB
 1. Windows: taskkill /F /IM adb.exe && adb devices && adb tcpip 5555
 1. WSL: adb connect
+
+if the above didn't work... please forcefully disconnect 5037
+
+1. netstat -ano | findstr :5037
+1. taskkill /PID <PID> /F

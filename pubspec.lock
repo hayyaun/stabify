@@ -188,7 +188,7 @@ packages:
       path: "."
       ref: master
       resolved-ref: de30f3f00c7168db55eec40008d2bb002f92113b
-      url: "https://github.com/Sameetdmr/flutter_bluetooth_serial.git"
+      url: "https://github.com/hayyaun/flutter_bluetooth_serial.git"
     source: git
     version: "0.4.0"
   flutter_launcher_icons:
